@@ -1,122 +1,131 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { Routes, Route, Navigate } from 'react-router-dom';
+import useAuth from './hooks/useAuth';
 
-function App() {
-  const [count, setCount] = useState(0)
+// Layout
+import DashboardLayout from './components/layout/DashboardLayout';
+import ProtectedRoute from './components/common/ProtectedRoute';
+import LoadingSpinner from './components/common/LoadingSpinner';
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+// Auth
+import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
 
-      <div className="ticks"></div>
+// Dashboards
+import AdminDashboard from './pages/dashboard/AdminDashboard';
+import ManagerDashboard from './pages/dashboard/ManagerDashboard';
+import EmployeeDashboard from './pages/dashboard/EmployeeDashboard';
+import CustomerDashboard from './pages/dashboard/CustomerDashboard';
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+// Branches
+import BranchList from './pages/branches/BranchList';
+import BranchForm from './pages/branches/BranchForm';
+import BranchDetail from './pages/branches/BranchDetail';
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+// Employees
+import EmployeeList from './pages/employees/EmployeeList';
+import EmployeeForm from './pages/employees/EmployeeForm';
+
+// Customers
+import CustomerList from './pages/customers/CustomerList';
+import CustomerProfile from './pages/customers/CustomerProfile';
+
+// Accounts
+import AccountList from './pages/accounts/AccountList';
+import AccountForm from './pages/accounts/AccountForm';
+import AccountDetail from './pages/accounts/AccountDetail';
+
+// Beneficiaries
+import BeneficiaryList from './pages/beneficiaries/BeneficiaryList';
+import BeneficiaryForm from './pages/beneficiaries/BeneficiaryForm';
+
+// Transactions
+import TransactionList from './pages/transactions/TransactionList';
+import TransferForm from './pages/transactions/TransferForm';
+import CreditForm from './pages/transactions/CreditForm';
+import DebitForm from './pages/transactions/DebitForm';
+
+// Loans
+import LoanList from './pages/loans/LoanList';
+import LoanApplyForm from './pages/loans/LoanApplyForm';
+import LoanDetail from './pages/loans/LoanDetail';
+
+// Logs
+import LoginLogs from './pages/logs/LoginLogs';
+import AuditLogs from './pages/logs/AuditLogs';
+
+// ── Role-based dashboard redirect ──────────────────────────────
+function DashboardRedirect() {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  switch (user.role_id) {
+    case 1: return <AdminDashboard />;
+    case 2: return <ManagerDashboard />;
+    case 3: return <EmployeeDashboard />;
+    case 4: return <CustomerDashboard />;
+    default: return <CustomerDashboard />;
+  }
 }
 
-export default App
+export default function App() {
+  const { loading } = useAuth();
+
+  if (loading) return <LoadingSpinner fullPage />;
+
+  return (
+    <Routes>
+      {/* ── Public ──────────────────────────────────────────────── */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+
+      {/* ── Protected (Dashboard Layout) ─────────────────────── */}
+      <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+
+        {/* Dashboard */}
+        <Route path="/dashboard" element={<DashboardRedirect />} />
+
+        {/* Branches — role ≤ 1 for CUD, ≤ 2 for view */}
+        <Route path="/branches" element={<ProtectedRoute maxRole={1}><BranchList /></ProtectedRoute>} />
+        <Route path="/branches/new" element={<ProtectedRoute maxRole={1}><BranchForm /></ProtectedRoute>} />
+        <Route path="/branches/:id" element={<ProtectedRoute maxRole={2}><BranchDetail /></ProtectedRoute>} />
+        <Route path="/branches/:id/edit" element={<ProtectedRoute maxRole={1}><BranchForm /></ProtectedRoute>} />
+
+        {/* Employees — role ≤ 2 */}
+        <Route path="/employees" element={<ProtectedRoute maxRole={2}><EmployeeList /></ProtectedRoute>} />
+        <Route path="/employees/new" element={<ProtectedRoute maxRole={2}><EmployeeForm /></ProtectedRoute>} />
+        <Route path="/employees/:id/edit" element={<ProtectedRoute maxRole={2}><EmployeeForm /></ProtectedRoute>} />
+
+        {/* Customers — role ≤ 3 for list, 4 for own profile */}
+        <Route path="/customers" element={<ProtectedRoute maxRole={3}><CustomerList /></ProtectedRoute>} />
+        <Route path="/customers/profile" element={<ProtectedRoute exactRoles={[4]}><CustomerProfile /></ProtectedRoute>} />
+
+        {/* Accounts — all roles can view, ≤ 3 can create */}
+        <Route path="/accounts" element={<AccountList />} />
+        <Route path="/accounts/new" element={<ProtectedRoute maxRole={3}><AccountForm /></ProtectedRoute>} />
+        <Route path="/accounts/:id" element={<AccountDetail />} />
+
+        {/* Beneficiaries — role 4 only */}
+        <Route path="/beneficiaries" element={<ProtectedRoute exactRoles={[4]}><BeneficiaryList /></ProtectedRoute>} />
+        <Route path="/beneficiaries/new" element={<ProtectedRoute exactRoles={[4]}><BeneficiaryForm /></ProtectedRoute>} />
+
+        {/* Transactions */}
+        <Route path="/transactions" element={<TransactionList />} />
+        <Route path="/transactions/transfer" element={<ProtectedRoute exactRoles={[4]}><TransferForm /></ProtectedRoute>} />
+        <Route path="/transactions/credit" element={<ProtectedRoute maxRole={3}><CreditForm /></ProtectedRoute>} />
+        <Route path="/transactions/debit" element={<ProtectedRoute exactRoles={[4]}><DebitForm /></ProtectedRoute>} />
+
+        {/* Loans */}
+        <Route path="/loans" element={<LoanList />} />
+        <Route path="/loans/apply" element={<ProtectedRoute exactRoles={[4]}><LoanApplyForm /></ProtectedRoute>} />
+        <Route path="/loans/:id" element={<LoanDetail />} />
+
+        {/* Logs */}
+        <Route path="/logs/login" element={<ProtectedRoute maxRole={2}><LoginLogs /></ProtectedRoute>} />
+        <Route path="/logs/audit" element={<ProtectedRoute maxRole={1}><AuditLogs /></ProtectedRoute>} />
+      </Route>
+
+      {/* ── Catch-all ───────────────────────────────────────────── */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  );
+}

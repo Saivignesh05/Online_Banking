@@ -1,0 +1,65 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Save, CheckCircle } from 'lucide-react';
+import api from '../../api/axios';
+import FormInput from '../../components/forms/FormInput';
+import FormSelect from '../../components/forms/FormSelect';
+import './Transactions.css';
+
+export default function DebitForm() {
+  const navigate = useNavigate();
+  const [accounts, setAccounts] = useState([]);
+  const [form, setForm] = useState({ from_account: '', amount: '', remarks: '' });
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api.get('/accounts').then(r => setAccounts(r.data)).catch(console.error);
+  }, []);
+
+  const handleChange = (e) => { setForm({ ...form, [e.target.name]: e.target.value }); setError(''); setResult(null); };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.from_account || !form.amount) { setError('Account and amount are required.'); return; }
+    setLoading(true);
+    try {
+      const res = await api.post('/transactions/debit', {
+        from_account: Number(form.from_account), amount: Number(form.amount), remarks: form.remarks
+      });
+      setResult(res.data);
+      setForm({ from_account: '', amount: '', remarks: '' });
+    } catch (err) {
+      setError(err.response?.data?.error || 'Withdrawal failed.');
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="page-container">
+      <div className="page-header">
+        <h1>Withdraw (Debit)</h1>
+        <button className="btn btn-secondary" onClick={() => navigate('/transactions')}><ArrowLeft size={16} /> Back</button>
+      </div>
+      {result && (
+        <div className="success-card glass-card">
+          <CheckCircle size={40} color="var(--success)" />
+          <h3>Withdrawal Successful!</h3>
+          <p>Reference: <strong>{result.reference_no}</strong></p>
+        </div>
+      )}
+      <div className="form-card glass-card">
+        {error && <div className="form-alert error">{error}</div>}
+        <form onSubmit={handleSubmit}>
+          <FormSelect label="From Account" name="from_account" value={form.from_account} onChange={handleChange} placeholder="Select account" required
+            options={accounts.map(a => ({ value: a.account_id, label: `${a.account_number} — ₹${Number(a.balance).toLocaleString('en-IN')}` }))} />
+          <FormInput label="Amount (₹)" name="amount" type="number" value={form.amount} onChange={handleChange} required />
+          <FormInput label="Remarks" name="remarks" value={form.remarks} onChange={handleChange} placeholder="Optional remarks" />
+          <div className="form-actions">
+            <button type="submit" className="btn btn-danger" disabled={loading}><Save size={16} /> {loading ? 'Processing...' : 'Withdraw'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
