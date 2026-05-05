@@ -51,12 +51,23 @@ exports.transfer = async (req, res) => {
       if (!own.rows.length) return res.status(403).json({ error: 'Access denied.' });
     }
 
+    // 2. Resolve to_account (input is account_number)
+    const toAccRes = await pool.query('SELECT account_id FROM account WHERE account_number = $1', [to_account.toString()]);
+    if (!toAccRes.rows.length) {
+      return res.status(404).json({ error: 'Recipient account number not found.' });
+    }
+    const to_account_id = toAccRes.rows[0].account_id;
+
+    if (from_account === to_account_id) {
+      return res.status(400).json({ error: 'Cannot transfer to the same account.' });
+    }
+
     // Check balance before calling procedure
     const bal = await pool.query('SELECT get_balance($1) AS balance', [from_account]);
     if (Number(bal.rows[0].balance) < Number(amount))
       return res.status(400).json({ error: 'Insufficient balance.' });
 
-    await pool.query('CALL transfer_money($1,$2,$3)', [from_account, to_account, amount]);
+    await pool.query('CALL transfer_money($1,$2,$3)', [from_account, to_account_id, amount]);
 
     // Return the newly created transaction
     const tx = await pool.query(
@@ -75,13 +86,20 @@ exports.credit = async (req, res) => {
     if (!to_account || !amount)
       return res.status(400).json({ error: 'to_account and amount required.' });
 
-    await pool.query('UPDATE account SET balance = balance + $1 WHERE account_id = $2', [amount, to_account]);
+    // Resolve to_account (input is account_number)
+    const accRes = await pool.query('SELECT account_id FROM account WHERE account_number = $1', [to_account.toString()]);
+    if (!accRes.rows.length) {
+      return res.status(404).json({ error: 'Account number not found.' });
+    }
+    const target_account_id = accRes.rows[0].account_id;
+
+    await pool.query('UPDATE account SET balance = balance + $1 WHERE account_id = $2', [amount, target_account_id]);
 
     const ref = 'CR' + Date.now();
     const result = await pool.query(
       `INSERT INTO transaction (from_account,to_account,amount,tx_type,status,reference_no,remarks)
        VALUES (NULL,$1,$2,'credit','success',$3,$4) RETURNING *`,
-      [to_account, amount, ref, remarks || null]
+      [target_account_id, amount, ref, remarks || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {

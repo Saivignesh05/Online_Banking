@@ -45,7 +45,7 @@ export default function CreditForm() {
       <div className="form-card glass-card">
         {error && <div className="form-alert error">{error}</div>}
         <form onSubmit={handleSubmit}>
-          <FormInput label="Account ID" name="to_account" type="number" value={form.to_account} onChange={handleChange} required />
+          <FormInput label="Account Number" name="to_account" type="number" value={form.to_account} onChange={handleChange} required placeholder="Enter 10-digit account number" />
           <FormInput label="Amount (₹)" name="amount" type="number" value={form.amount} onChange={handleChange} required />
           <FormInput label="Remarks" name="remarks" value={form.remarks} onChange={handleChange} placeholder="Optional remarks" />
           <div className="form-actions">

@@ -47,7 +47,7 @@ export default function LoginPage() {
         <div className="auth-header">
           <div className="auth-brand">
             <div className="brand-icon">N</div>
-            <span className="brand-name gradient-text">NexusBank</span>
+            <span className="brand-name gradient-text">Assk Bank</span>
           </div>
           <h1>Welcome Back</h1>
           <p>Sign in to access your banking dashboard</p>

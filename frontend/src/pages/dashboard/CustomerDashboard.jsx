@@ -67,7 +67,7 @@ export default function CustomerDashboard() {
           <Landmark size={48} color="var(--primary)" style={{ marginBottom: '16px' }} />
           <h2>Application Under Review</h2>
           <p style={{ color: 'var(--text-muted)', marginTop: '12px' }}>
-            Thank you for applying to NexusBank! Your account details are currently being reviewed by our branch staff. 
+            Thank you for applying to Assk Bank! Your account details are currently being reviewed by our branch staff.
             Once approved, your bank account will be generated, and you will have full access to your dashboard.
           </p>
         </div>

@@ -38,13 +38,13 @@ export default function ApplyPage() {
       const data = { ...form };
       delete data.confirmPassword;
       const res = await api.post('/auth/apply', data);
-      
+
       // Auto-login after applying
       const { token, user } = res.data;
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
+
       setSuccess(res.data.message);
       setTimeout(() => {
         window.location.href = '/dashboard';
@@ -69,10 +69,10 @@ export default function ApplyPage() {
         <div className="auth-header">
           <div className="auth-brand">
             <div className="brand-icon">N</div>
-            <span className="brand-name gradient-text">NexusBank</span>
+            <span className="brand-name gradient-text">Assk Bank</span>
           </div>
           <h1>Apply for an Account</h1>
-          <p>Submit your details to open an account with NexusBank</p>
+          <p>Submit your details to open an account with Assk Bank</p>
         </div>
 
         {error && (
@@ -81,7 +81,7 @@ export default function ApplyPage() {
             <span>{error}</span>
           </div>
         )}
-        
+
         {success && (
           <div className="form-alert" style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'var(--success-light)', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
             {success} Redirecting...
