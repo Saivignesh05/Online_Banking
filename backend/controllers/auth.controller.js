@@ -21,26 +21,28 @@ const signToken = (user, roleName) =>
       username:  user.username,
       role_id:   user.role_id,
       role_name: roleName,
+      kyc_verified: user.kyc_verified !== undefined ? user.kyc_verified : true,
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );
 
 // ─────────────────────────────────────────────────────────────────
-// POST /api/auth/register
 // ─────────────────────────────────────────────────────────────────
-exports.register = async (req, res) => {
+// POST /api/auth/apply
+// ─────────────────────────────────────────────────────────────────
+exports.apply = async (req, res) => {
   const client = await pool.connect();
   try {
-    const { username, password, role_id = 4, name, dob, gender, phone, email, address } = req.body;
+    const { username, password, name, dob, gender, phone, email, address, pan_card } = req.body;
 
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required.' });
+    if (!username || !password || !name || !pan_card) {
+      return res.status(400).json({ error: 'Username, password, name, and PAN card are required.' });
     }
 
     // Check if username already exists
-    const exists = await client.query('SELECT 1 FROM user_login WHERE username = $1', [username]);
-    if (exists.rows.length > 0) {
+    const existsUser = await client.query('SELECT 1 FROM user_login WHERE username = $1', [username]);
+    if (existsUser.rows.length > 0) {
       return res.status(409).json({ error: 'Username already taken.' });
     }
 
@@ -48,45 +50,47 @@ exports.register = async (req, res) => {
 
     await client.query('BEGIN');
 
-    // Insert into user_login
+    // Insert into user_login (Role 4: Account Holder)
     const userResult = await client.query(
       `INSERT INTO user_login (username, password_hash, role_id)
-       VALUES ($1, $2, $3) RETURNING user_id, username, role_id`,
-      [username, hashedPassword, role_id]
+       VALUES ($1, $2, 4) RETURNING user_id, username, role_id`,
+      [username, hashedPassword]
     );
     const newUser = userResult.rows[0];
 
-    // If Account Holder (role_id = 4), also create a customer record
-    if (Number(role_id) === 4) {
-      await client.query(
-        `INSERT INTO customer (user_id, name, dob, gender, phone, email, address)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [newUser.user_id, name || null, dob || null, gender || null, phone || null, email || null, address || null]
-      );
-    }
+    // Insert into customer with kyc_verified = false
+    await client.query(
+      `INSERT INTO customer (user_id, name, dob, gender, phone, email, address, pan_card, kyc_verified)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false)`,
+      [newUser.user_id, name, dob || null, gender || null, phone || null, email || null, address || null, pan_card]
+    );
 
     await client.query('COMMIT');
 
     // Fetch role name
     const roleResult = await client.query('SELECT role_name FROM role WHERE role_id = $1', [newUser.role_id]);
-    const roleName   = roleResult.rows[0]?.role_name || 'Unknown';
+    const roleName   = roleResult.rows[0]?.role_name || 'Account Holder';
+
+    // Add kyc_verified to user object
+    newUser.kyc_verified = false;
 
     const token = signToken(newUser, roleName);
 
     res.status(201).json({
-      message: 'Registration successful.',
+      message: 'Application submitted successfully.',
       token,
       user: {
         user_id:   newUser.user_id,
         username:  newUser.username,
         role_id:   newUser.role_id,
         role_name: roleName,
+        kyc_verified: false
       },
     });
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error('Register error:', err.message);
-    res.status(500).json({ error: 'Registration failed.' });
+    console.error('Apply error:', err.message);
+    res.status(500).json({ error: 'Application submission failed.' });
   } finally {
     client.release();
   }
@@ -160,6 +164,15 @@ exports.login = async (req, res) => {
       [user.user_id, user.role_name]
     );
 
+    let kyc_verified = true;
+    if (user.role_id === 4) {
+      const kycRes = await pool.query('SELECT kyc_verified FROM customer WHERE user_id = $1', [user.user_id]);
+      if (kycRes.rows.length > 0) {
+        kyc_verified = kycRes.rows[0].kyc_verified;
+      }
+    }
+    user.kyc_verified = kyc_verified;
+
     const token = signToken(user, user.role_name);
 
     res.json({
@@ -170,6 +183,7 @@ exports.login = async (req, res) => {
         username:  user.username,
         role_id:   user.role_id,
         role_name: user.role_name,
+        kyc_verified
       },
     });
   } catch (err) {

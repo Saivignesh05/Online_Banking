@@ -8,7 +8,7 @@ import LoadingSpinner from './components/common/LoadingSpinner';
 
 // Auth
 import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
+import ApplyPage from './pages/auth/ApplyPage';
 
 // Dashboards
 import AdminDashboard from './pages/dashboard/AdminDashboard';
@@ -49,6 +49,9 @@ import LoanList from './pages/loans/LoanList';
 import LoanApplyForm from './pages/loans/LoanApplyForm';
 import LoanDetail from './pages/loans/LoanDetail';
 
+// Applications
+import ApplicationList from './pages/applications/ApplicationList';
+
 // Logs
 import LoginLogs from './pages/logs/LoginLogs';
 import AuditLogs from './pages/logs/AuditLogs';
@@ -75,7 +78,7 @@ export default function App() {
     <Routes>
       {/* ── Public ──────────────────────────────────────────────── */}
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/apply" element={<ApplyPage />} />
 
       {/* ── Protected (Dashboard Layout) ─────────────────────── */}
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
@@ -117,6 +120,9 @@ export default function App() {
         <Route path="/loans" element={<LoanList />} />
         <Route path="/loans/apply" element={<ProtectedRoute exactRoles={[4]}><LoanApplyForm /></ProtectedRoute>} />
         <Route path="/loans/:id" element={<LoanDetail />} />
+
+        {/* Applications */}
+        <Route path="/applications" element={<ProtectedRoute maxRole={3}><ApplicationList /></ProtectedRoute>} />
 
         {/* Logs */}
         <Route path="/logs/login" element={<ProtectedRoute maxRole={2}><LoginLogs /></ProtectedRoute>} />

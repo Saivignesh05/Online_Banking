@@ -1,0 +1,23 @@
+.app-details-summary {
+  background: var(--bg-secondary);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+.app-details-summary p {
+  margin-bottom: 4px;
+}
+
+.app-instructions {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.approve-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

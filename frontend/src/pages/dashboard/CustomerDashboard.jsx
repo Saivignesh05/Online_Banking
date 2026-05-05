@@ -6,9 +6,11 @@ import StatCard from '../../components/common/StatCard';
 import DataTable from '../../components/common/DataTable';
 import StatusBadge from '../../components/common/StatusBadge';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
+import useAuth from '../../hooks/useAuth';
 import './Dashboard.css';
 
 export default function CustomerDashboard() {
+  const { user } = useAuth();
   const [accounts, setAccounts] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [loans, setLoans] = useState([]);
@@ -16,6 +18,10 @@ export default function CustomerDashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (user && user.kyc_verified === false) {
+      setLoading(false);
+      return;
+    }
     const load = async () => {
       try {
         const [aRes, tRes, lRes] = await Promise.all([
@@ -53,6 +59,21 @@ export default function CustomerDashboard() {
   ];
 
   if (loading) return <div className="page-container"><p className="loading-text">Loading dashboard...</p></div>;
+
+  if (user && user.kyc_verified === false) {
+    return (
+      <div className="page-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', textAlign: 'center' }}>
+        <div style={{ background: 'var(--bg-secondary)', padding: '40px', borderRadius: 'var(--radius-lg)', maxWidth: '500px' }}>
+          <Landmark size={48} color="var(--primary)" style={{ marginBottom: '16px' }} />
+          <h2>Application Under Review</h2>
+          <p style={{ color: 'var(--text-muted)', marginTop: '12px' }}>
+            Thank you for applying to NexusBank! Your account details are currently being reviewed by our branch staff. 
+            Once approved, your bank account will be generated, and you will have full access to your dashboard.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container">

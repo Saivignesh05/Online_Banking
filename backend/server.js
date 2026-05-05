@@ -37,6 +37,7 @@ app.use('/api/beneficiaries', require('./routes/beneficiary.routes'));
 app.use('/api/transactions',  require('./routes/transaction.routes'));
 app.use('/api/loans',         require('./routes/loan.routes'));
 app.use('/api/logs',          require('./routes/log.routes'));
+app.use('/api/applications',  require('./routes/application.routes'));
 
 // ── 404 Handler ─────────────────────────────────────────────────
 app.use((req, res) => {
