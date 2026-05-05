@@ -21,6 +21,10 @@ import BranchList from './pages/branches/BranchList';
 import BranchForm from './pages/branches/BranchForm';
 import BranchDetail from './pages/branches/BranchDetail';
 
+// Managers
+import ManagerList from './pages/managers/ManagerList';
+import ManagerForm from './pages/managers/ManagerForm';
+
 // Employees
 import EmployeeList from './pages/employees/EmployeeList';
 import EmployeeForm from './pages/employees/EmployeeForm';
@@ -91,6 +95,10 @@ export default function App() {
         <Route path="/branches/new" element={<ProtectedRoute maxRole={1}><BranchForm /></ProtectedRoute>} />
         <Route path="/branches/:id" element={<ProtectedRoute maxRole={2}><BranchDetail /></ProtectedRoute>} />
         <Route path="/branches/:id/edit" element={<ProtectedRoute maxRole={1}><BranchForm /></ProtectedRoute>} />
+
+        {/* Managers — role ≤ 1 */}
+        <Route path="/managers" element={<ProtectedRoute maxRole={1}><ManagerList /></ProtectedRoute>} />
+        <Route path="/managers/new" element={<ProtectedRoute maxRole={1}><ManagerForm /></ProtectedRoute>} />
 
         {/* Employees — role ≤ 2 */}
         <Route path="/employees" element={<ProtectedRoute maxRole={2}><EmployeeList /></ProtectedRoute>} />

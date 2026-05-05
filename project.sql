@@ -230,18 +230,18 @@ ip_address varchar(45)
 -- =========================
 
 insert into user_login (username,password_hash,role_id) values
-('bh1','h',1),
-('mgr1','h',2),
-('mgr2','h',2),
-('emp1','h',3),
-('emp2','h',3),
-('emp3','h',3),
-('c1','h',4),
-('c2','h',4),
-('c3','h',4),
-('c4','h',4),
-('c5','h',4),
-('c6','h',4);
+('bh1','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',1),
+('mgr1','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',2),
+('mgr2','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',2),
+('emp1','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',3),
+('emp2','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',3),
+('emp3','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',3),
+('c1','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4),
+('c2','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4),
+('c3','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4),
+('c4','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4),
+('c5','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4),
+('c6','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4);
 
 -- =========================
 -- BRANCH (2)

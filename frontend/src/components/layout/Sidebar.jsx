@@ -10,6 +10,7 @@ import './Sidebar.css';
 const navItems = [
   { to: '/dashboard',    label: 'Dashboard',      icon: LayoutDashboard, maxRole: 4 },
   { to: '/branches',     label: 'Branches',        icon: Building2,      maxRole: 1 },
+  { to: '/managers',     label: 'Managers',        icon: ShieldCheck,    maxRole: 1 },
   { to: '/employees',    label: 'Employees',       icon: Users,           maxRole: 2 },
   { to: '/applications', label: 'Applications',    icon: FileText,        maxRole: 3 },
   { to: '/customers',    label: 'Customers',       icon: UserCircle,      maxRole: 3 },
