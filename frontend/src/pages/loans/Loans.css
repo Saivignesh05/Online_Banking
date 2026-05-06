@@ -35,3 +35,24 @@
     grid-template-columns: 1fr;
   }
 }
+
+.emi-preview {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--accent);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.emi-preview span {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.emi-preview strong {
+  color: var(--accent);
+  font-size: 1.1rem;
+}

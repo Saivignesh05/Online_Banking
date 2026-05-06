@@ -13,24 +13,41 @@ export default function LoanDetail() {
   const [loan, setLoan] = useState(null);
   const [emi, setEmi] = useState(null);
   const [payments, setPayments] = useState([]);
+  const [paying, setPaying] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const fetchDetails = async () => {
+    setLoading(true);
+    try {
+      const [lRes, eRes, pRes] = await Promise.all([
+        api.get(`/loans/${id}`),
+        api.get(`/loans/${id}/emi`).catch(() => ({ data: {} })),
+        api.get(`/loans/${id}/payments`).catch(() => ({ data: [] })),
+      ]);
+      setLoan(lRes.data);
+      setEmi(eRes.data?.emi);
+      setPayments(pRes.data);
+    } catch { navigate('/loans'); }
+    finally { setLoading(false); }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [lRes, eRes, pRes] = await Promise.all([
-          api.get(`/loans/${id}`),
-          api.get(`/loans/${id}/emi`).catch(() => ({ data: {} })),
-          api.get(`/loans/${id}/payments`).catch(() => ({ data: [] })),
-        ]);
-        setLoan(lRes.data);
-        setEmi(eRes.data?.emi);
-        setPayments(pRes.data);
-      } catch { navigate('/loans'); }
-      finally { setLoading(false); }
-    };
-    load();
+    fetchDetails();
   }, [id, navigate]);
+
+  const handlePayEmi = async () => {
+    if (!window.confirm(`Are you sure you want to pay the EMI of ${formatCurrency(emi)}?`)) return;
+    setPaying(true);
+    try {
+      await api.post(`/loans/${id}/payments`);
+      alert('EMI payment successful!');
+      fetchDetails();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Payment failed.');
+    } finally {
+      setPaying(false);
+    }
+  };
 
   const paymentCols = [
     { key: 'emi_id', label: 'ID', width: '60px' },
@@ -47,7 +64,14 @@ export default function LoanDetail() {
     <div className="page-container">
       <div className="page-header">
         <h1><Landmark size={24} /> Loan #{loan.loan_id}</h1>
-        <button className="btn btn-secondary" onClick={() => navigate('/loans')}><ArrowLeft size={16} /> Back</button>
+        <div className="header-actions">
+          {loan.status === 'active' && emi && (
+            <button className="btn btn-primary" onClick={handlePayEmi} disabled={paying}>
+              {paying ? 'Processing...' : 'Pay EMI'}
+            </button>
+          )}
+          <button className="btn btn-secondary" onClick={() => navigate('/loans')}><ArrowLeft size={16} /> Back</button>
+        </div>
       </div>
 
       <div className="loan-detail-grid">
@@ -72,7 +96,7 @@ export default function LoanDetail() {
       </div>
 
       <div className="dashboard-section" style={{ marginTop: 24 }}>
-        <h3>EMI Payments</h3>
+        <h3>EMI Payments History</h3>
         <DataTable columns={paymentCols} data={payments} emptyMessage="No EMI payments recorded." />
       </div>
     </div>
