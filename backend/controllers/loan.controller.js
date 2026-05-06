@@ -110,7 +110,10 @@ exports.calculateEmi = async (req, res) => {
 exports.getPayments = async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM emi_payment WHERE loan_id = $1 ORDER BY due_date', [req.params.id]
+      `SELECT * FROM emi_payment 
+       WHERE loan_id = $1 
+       AND (due_date <= CURRENT_DATE OR payment_status = 'paid')
+       ORDER BY due_date`, [req.params.id]
     );
     res.json(result.rows);
   } catch (err) {
@@ -171,15 +174,39 @@ exports.recordPayment = async (req, res) => {
     const tx_id = txRes.rows[0].tx_id;
 
     // 7. Find the next pending installment
-    const pendingRes = await client.query(
+    let pendingRes = await client.query(
       `SELECT emi_id, due_date FROM emi_payment 
        WHERE loan_id = $1 AND payment_status = 'pending' 
        ORDER BY due_date ASC LIMIT 1`, [loan_id]
     );
 
+    // SELF-HEALING: If no pending installments exist, generate the missing schedule
+    if (pendingRes.rows.length === 0) {
+      const paidCountRes = await client.query('SELECT COUNT(*) FROM emi_payment WHERE loan_id = $1', [loan_id]);
+      const paidCount = parseInt(paidCountRes.rows[0].count);
+      
+      if (paidCount < loan.tenure_months) {
+        // Generate the rest of the schedule
+        for (let i = paidCount + 1; i <= loan.tenure_months; i++) {
+          await client.query(
+            `INSERT INTO emi_payment (loan_id, emi_amount, due_date, payment_status, penalty_amount)
+             VALUES ($1, $2, ($3::date + (interval '1 month' * $4))::date, 'pending', 0)`,
+            [loan.loan_id, emi_amount, loan.start_date, i]
+          );
+        }
+        
+        // Re-fetch the first newly created pending installment
+        pendingRes = await client.query(
+          `SELECT emi_id, due_date FROM emi_payment 
+           WHERE loan_id = $1 AND payment_status = 'pending' 
+           ORDER BY due_date ASC LIMIT 1`, [loan_id]
+        );
+      }
+    }
+
     if (pendingRes.rows.length === 0) {
       await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'No pending installments found for this loan.' });
+      return res.status(400).json({ error: 'No pending installments found and could not generate schedule.' });
     }
 
     const { emi_id, due_date } = pendingRes.rows[0];
