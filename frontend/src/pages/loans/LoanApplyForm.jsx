@@ -19,6 +19,15 @@ export default function LoanApplyForm() {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
+  const calculateEMI = (p, r, n) => {
+    if (!p || !r || !n || p <= 0 || r <= 0 || n <= 0) return null;
+    const monthlyRate = r / 1200;
+    const emi = (p * monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1);
+    return isFinite(emi) ? emi.toFixed(2) : null;
+  };
+
+  const estimatedEMI = calculateEMI(Number(form.loan_amount), Number(form.interest_rate), Number(form.tenure_months));
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.account_id || !form.loan_type || !form.loan_amount || !form.interest_rate || !form.tenure_months) {
@@ -59,6 +68,14 @@ export default function LoanApplyForm() {
             <FormInput label="Interest Rate (%)" name="interest_rate" type="number" value={form.interest_rate} onChange={handleChange} required placeholder="e.g. 8.5" />
           </div>
           <FormInput label="Tenure (months)" name="tenure_months" type="number" value={form.tenure_months} onChange={handleChange} required placeholder="e.g. 60" />
+          
+          {estimatedEMI && (
+            <div className="emi-preview">
+              <span>Estimated Monthly EMI: </span>
+              <strong>₹{Number(estimatedEMI).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+            </div>
+          )}
+
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={loading}><Save size={16} /> {loading ? 'Submitting...' : 'Apply'}</button>
           </div>

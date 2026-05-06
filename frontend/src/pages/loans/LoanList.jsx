@@ -35,11 +35,16 @@ export default function LoanList() {
     { key: 'tenure_months', label: 'Tenure', render: (r) => `${r.tenure_months} months` },
     { key: 'start_date', label: 'Start', render: (r) => formatDate(r.start_date) },
     { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
-    ...(user?.role_id <= 3 ? [{ key: 'actions', label: '', width: '100px', render: (r) =>
-      r.status === 'pending' ? (
-        <button className="btn btn-success btn-sm" onClick={(e) => { e.stopPropagation(); handleApprove(r.loan_id); }}>Approve</button>
-      ) : null
-    }] : []),
+    { key: 'actions', label: '', width: '150px', render: (r) => (
+      <div style={{ display: 'flex', gap: '8px' }}>
+        {user?.role_id <= 3 && r.status === 'pending' && (
+          <button className="btn btn-success btn-sm" onClick={(e) => { e.stopPropagation(); handleApprove(r.loan_id); }}>Approve</button>
+        )}
+        {user?.role_id === 4 && r.status === 'active' && (
+          <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/loans/${r.loan_id}`); }}>Pay EMI</button>
+        )}
+      </div>
+    )},
   ];
 
   if (loading) return <div className="page-container"><p className="loading-text">Loading...</p></div>;

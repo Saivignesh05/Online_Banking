@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wallet, ArrowLeftRight, Landmark, Send, CreditCard } from 'lucide-react';
+import { Wallet, ArrowLeftRight, Landmark, Send, CreditCard, Shield } from 'lucide-react';
 import api from '../../api/axios';
 import StatCard from '../../components/common/StatCard';
 import DataTable from '../../components/common/DataTable';
@@ -91,7 +91,7 @@ export default function CustomerDashboard() {
 
       <div className="stats-grid">
         <StatCard icon={Wallet} label="Total Balance" value={formatCurrency(totalBalance)} color="var(--success)" />
-        <StatCard icon={CreditCard} label="Accounts" value={accounts.length} color="var(--primary)" />
+        <StatCard icon={Shield} label="CIBIL Score" value={user?.customer?.cibil_score || '—'} color="var(--primary)" />
         <StatCard icon={ArrowLeftRight} label="Transactions" value={transactions.length} color="var(--secondary)" />
         <StatCard icon={Landmark} label="Active Loans" value={loans.filter(l => l.status === 'active').length} color="var(--accent)" />
       </div>
