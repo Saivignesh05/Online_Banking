@@ -39,15 +39,10 @@ export default function ApplyPage() {
       delete data.confirmPassword;
       const res = await api.post('/auth/apply', data);
 
-      // Auto-login after applying
-      const { token, user } = res.data;
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-      setSuccess(res.data.message);
+      // Remove auto-login, just show success message and redirect to login
+      setSuccess('Application submitted successfully.');
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        navigate('/login');
       }, 2000);
     } catch (err) {
       const msg = err.response?.data?.error || 'Application failed.';
