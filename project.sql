@@ -492,3 +492,110 @@ begin
 
 end;
 $$;
+
+
+
+-- ============================================================
+-- ONLINE BANKING SYSTEM — Database Optimizations (Views & Indices)
+-- ============================================================
+
+-- ─── 1. VIEWS ───────────────────────────────────────────────────
+
+-- View for a comprehensive Customer Profile including total balance
+CREATE OR REPLACE VIEW v_customer_profile AS
+SELECT 
+    c.customer_id,
+    u.username,
+    c.name,
+    c.email,
+    c.phone,
+    c.kyc_verified,
+    COUNT(a.account_id) AS total_accounts,
+    COALESCE(SUM(a.balance), 0) AS total_balance,
+    c.cibil_score,
+    c.created_at AS member_since
+FROM customer c
+JOIN user_login u ON c.user_id = u.user_id
+LEFT JOIN account a ON c.customer_id = a.customer_id
+GROUP BY c.customer_id, u.username, c.name, c.email, c.phone, c.kyc_verified, c.cibil_score, c.created_at;
+
+-- View for readable Transaction History (shows names instead of IDs)
+CREATE OR REPLACE VIEW v_transaction_history AS
+SELECT 
+    t.tx_id,
+    t.reference_no,
+    t.tx_time,
+    t.amount,
+    t.tx_type,
+    t.status,
+    t.remarks,
+    fa.account_number AS from_account_no,
+    fc.name AS sender_name,
+    ta.account_number AS to_account_no,
+    tc.name AS receiver_name
+FROM transaction t
+LEFT JOIN account fa ON t.from_account = fa.account_id
+LEFT JOIN customer fc ON fa.customer_id = fc.customer_id
+LEFT JOIN account ta ON t.to_account = ta.account_id
+LEFT JOIN customer tc ON ta.customer_id = tc.customer_id;
+
+-- View for Branch Performance Summary
+CREATE OR REPLACE VIEW v_branch_summary AS
+SELECT 
+    b.branch_id,
+    b.branch_name,
+    b.location,
+    b.ifsc_code,
+    (SELECT COUNT(*) FROM account a WHERE a.branch_id = b.branch_id) AS total_accounts,
+    (SELECT COALESCE(SUM(balance), 0) FROM account a WHERE a.branch_id = b.branch_id) AS total_deposits,
+    (SELECT COUNT(*) FROM employee e WHERE e.branch_id = b.branch_id AND e.status = 'active') AS active_staff
+FROM branch b;
+
+-- View for Staff to track pending KYC applications
+CREATE OR REPLACE VIEW v_pending_kyc AS
+SELECT 
+    customer_id,
+    name,
+    email,
+    phone,
+    pan_card,
+    created_at AS application_date
+FROM customer
+WHERE kyc_verified = false;
+
+-- View for Loan Tracking with repayment progress
+CREATE OR REPLACE VIEW v_loan_status AS
+SELECT 
+    l.loan_id,
+    c.name AS customer_name,
+    l.loan_type,
+    l.loan_amount,
+    l.interest_rate,
+    l.tenure_months,
+    l.status,
+    COALESCE(SUM(e.emi_amount), 0) AS total_paid_to_date,
+    (l.loan_amount - COALESCE(SUM(e.emi_amount), 0)) AS remaining_balance
+FROM loan l
+JOIN customer c ON l.customer_id = c.customer_id
+LEFT JOIN emi_payment e ON l.loan_id = e.loan_id AND e.payment_status = 'paid'
+GROUP BY l.loan_id, c.name, l.loan_type, l.loan_amount, l.interest_rate, l.tenure_months, l.status;
+
+
+-- ─── 2. INDICES ─────────────────────────────────────────────────
+
+-- Performance for transaction history and statements
+CREATE INDEX IF NOT EXISTS idx_tx_time ON transaction(tx_time DESC);
+CREATE INDEX IF NOT EXISTS idx_tx_accounts ON transaction(from_account, to_account);
+
+-- Faster lookups for customers and login verification
+CREATE INDEX IF NOT EXISTS idx_customer_name ON customer USING btree (name);
+CREATE INDEX IF NOT EXISTS idx_customer_email ON customer(email);
+CREATE INDEX IF NOT EXISTS idx_customer_phone ON customer(phone);
+
+-- Performance for audit and security logs
+CREATE INDEX IF NOT EXISTS idx_login_log_user_time ON login_log(user_id, login_time DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_record ON audit_log(table_name, record_id);
+
+-- Optimized tracking for overdue EMIs (Partial Index)
+CREATE INDEX IF NOT EXISTS idx_emi_due_pending ON emi_payment(due_date) 
+WHERE payment_status = 'pending';
