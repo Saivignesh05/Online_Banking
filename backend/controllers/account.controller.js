@@ -56,6 +56,60 @@ exports.create = async (req, res) => {
   }
 };
 
+// Customer requesting a new account (status = pending)
+exports.requestAccount = async (req, res) => {
+  try {
+    if (req.user.role_id !== 4) return res.status(403).json({ error: 'Only customers can request accounts here.' });
+    const { branch_id, account_type } = req.body;
+    if (!branch_id || !account_type) return res.status(400).json({ error: 'branch_id and account_type required.' });
+
+    // get customer_id
+    const custRes = await pool.query('SELECT customer_id FROM customer WHERE user_id = $1', [req.user.user_id]);
+    if (!custRes.rows.length) return res.status(404).json({ error: 'Customer not found.' });
+    const customer_id = custRes.rows[0].customer_id;
+
+    // generate random account number
+    const accNumber = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+
+    // create the account with status = 'pending'
+    await pool.query(
+      `INSERT INTO account (customer_id, branch_id, account_number, account_type, balance, status)
+       VALUES ($1, $2, $3, $4, 0, 'pending')`,
+      [customer_id, branch_id, accNumber, account_type]
+    );
+
+    res.status(201).json({ message: 'Account request submitted. Waiting for approval.' });
+  } catch (err) {
+    console.error('request account:', err.message);
+    res.status(500).json({ error: 'Failed to request account.' });
+  }
+};
+
+exports.approveAccount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `UPDATE account SET status='active', opened_date=CURRENT_DATE WHERE account_id=$1 AND status='pending' RETURNING *`,
+      [id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Pending account not found.' });
+    res.json({ message: 'Account approved.', account: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to approve account.' });
+  }
+};
+
+exports.rejectAccount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`DELETE FROM account WHERE account_id=$1 AND status='pending' RETURNING *`, [id]);
+    if (!result.rows.length) return res.status(404).json({ error: 'Pending account not found.' });
+    res.json({ message: 'Account request rejected.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to reject account.' });
+  }
+};
+
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
