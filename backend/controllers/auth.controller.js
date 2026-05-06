@@ -218,8 +218,30 @@ exports.getMe = async (req, res) => {
       const cust = await pool.query('SELECT * FROM customer WHERE user_id = $1', [user_id]);
       profile.customer = cust.rows[0] || null;
     } else if (Number(role_id) === 3) {
-      const emp = await pool.query('SELECT * FROM employee WHERE user_id = $1', [user_id]);
+      const emp = await pool.query(`
+        SELECT e.*, b.branch_name, b.location 
+        FROM employee e
+        JOIN branch b ON e.branch_id = b.branch_id
+        WHERE e.user_id = $1
+      `, [user_id]);
       profile.employee = emp.rows[0] || null;
+    } else if (Number(role_id) === 2) {
+      const mgr = await pool.query(`
+        SELECT m.*, b.branch_name, b.location
+        FROM manager m
+        JOIN branch_head bh ON m.branch_head_id = bh.branch_head_id
+        JOIN branch b ON bh.branch_id = b.branch_id
+        WHERE m.user_id = $1
+      `, [user_id]);
+      profile.manager = mgr.rows[0] || null;
+    } else if (Number(role_id) === 1) {
+      const bh = await pool.query(`
+        SELECT bh.*, b.branch_name, b.location
+        FROM branch_head bh
+        JOIN branch b ON bh.branch_id = b.branch_id
+        WHERE bh.user_id = $1
+      `, [user_id]);
+      profile.branch_head = bh.rows[0] || null;
     }
 
     res.json(profile);

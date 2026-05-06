@@ -32,7 +32,12 @@ export default function Topbar() {
           <div className="topbar-avatar">{user?.username?.charAt(0).toUpperCase()}</div>
           <div className="topbar-user-info">
             <span className="topbar-username">{user?.username}</span>
-            <span className="topbar-role">{getRoleName(user?.role_id)}</span>
+            <span className="topbar-role">
+              {getRoleName(user?.role_id)}
+              {user?.employee?.branch_name && ` • ${user.employee.branch_name}`}
+              {user?.manager?.branch_name && ` • ${user.manager.branch_name}`}
+              {user?.branch_head?.branch_name && ` • ${user.branch_head.branch_name}`}
+            </span>
           </div>
         </div>
 

@@ -8,7 +8,7 @@ import './Accounts.css';
 
 export default function AccountForm() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ customer_id: '', branch_id: '', account_number: '', account_type: 'savings', balance: '' });
+  const [form, setForm] = useState({ customer_id: '', branch_id: '', account_type: 'savings', balance: '' });
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,7 +21,7 @@ export default function AccountForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.customer_id || !form.branch_id || !form.account_number || !form.account_type) {
+    if (!form.customer_id || !form.branch_id || !form.account_type) {
       setError('All fields are required.'); return;
     }
     setLoading(true);
@@ -48,11 +48,10 @@ export default function AccountForm() {
               options={branches.map(b => ({ value: b.branch_id, label: `${b.branch_name} — ${b.location}` }))} />
           </div>
           <div className="form-row">
-            <FormInput label="Account Number" name="account_number" value={form.account_number} onChange={handleChange} required />
             <FormSelect label="Account Type" name="account_type" value={form.account_type} onChange={handleChange}
               options={[{ value: 'savings', label: 'Savings' }, { value: 'current', label: 'Current' }, { value: 'fixed', label: 'Fixed Deposit' }]} />
+            <FormInput label="Initial Balance" name="balance" type="number" value={form.balance} onChange={handleChange} placeholder="0.00" />
           </div>
-          <FormInput label="Initial Balance" name="balance" type="number" value={form.balance} onChange={handleChange} placeholder="0.00" />
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={loading}><Save size={16} /> {loading ? 'Creating...' : 'Create Account'}</button>
           </div>
