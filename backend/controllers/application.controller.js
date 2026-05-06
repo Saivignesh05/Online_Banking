@@ -97,6 +97,10 @@ exports.rejectApplication = async (req, res) => {
     
     const user_id = custRes.rows[0].user_id;
     
+    // Delete any dependent logs
+    await client.query('DELETE FROM login_log WHERE user_id = $1', [user_id]);
+    await client.query('DELETE FROM audit_log WHERE user_id = $1', [user_id]);
+
     // Delete customer
     await client.query('DELETE FROM customer WHERE customer_id = $1', [id]);
     
