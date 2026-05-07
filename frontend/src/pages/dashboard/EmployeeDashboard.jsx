@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wallet, ArrowLeftRight, UserCircle, PlusCircle } from 'lucide-react';
 import api from '../../api/axios';
+import useAuth from '../../hooks/useAuth';
 import StatCard from '../../components/common/StatCard';
 import DataTable from '../../components/common/DataTable';
 import { formatCurrency, formatDateTime } from '../../utils/formatters';
@@ -13,6 +14,7 @@ export default function EmployeeDashboard() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     const load = async () => {
