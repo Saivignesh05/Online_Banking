@@ -78,6 +78,8 @@ export default function AccountList() {
   const columns = [
     { key: 'account_id', label: 'ID', width: '60px' },
     { key: 'account_number', label: 'Account Number' },
+    { key: 'customer_name', label: 'Customer Name', render: (r) => r.customer_name ? `${r.customer_name} (ID: ${r.customer_id})` : '—' },
+    { key: 'branch_name', label: 'Branch', render: (r) => r.branch_name ? `${r.branch_name} (${r.location})` : '—' },
     { key: 'account_type', label: 'Type', render: (r) => <span style={{ textTransform: 'capitalize' }}>{r.account_type}</span> },
     { key: 'balance', label: 'Balance', render: (r) => <strong style={{ color: 'var(--success)' }}>{formatCurrency(r.balance)}</strong> },
     { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },

@@ -5,14 +5,23 @@ exports.getAll = async (req, res) => {
   try {
     let result;
     if (req.user.role_id === 4) {
-      // Account holders see only their own accounts
+      // Account holders see only their own accounts (with branch name)
       result = await pool.query(
-        `SELECT a.* FROM account a
+        `SELECT a.*, b.branch_name, b.location, c.name as customer_name 
+         FROM account a
          JOIN customer c ON a.customer_id = c.customer_id
+         JOIN branch b ON a.branch_id = b.branch_id
          WHERE c.user_id = $1 ORDER BY a.account_id`, [req.user.user_id]
       );
     } else {
-      result = await pool.query('SELECT * FROM account ORDER BY account_id');
+      // Admins/Managers/Employees see all accounts with names and branches
+      result = await pool.query(
+        `SELECT a.*, b.branch_name, b.location, c.name as customer_name 
+         FROM account a
+         JOIN branch b ON a.branch_id = b.branch_id
+         JOIN customer c ON a.customer_id = c.customer_id
+         ORDER BY a.account_id`
+      );
     }
     res.json(result.rows);
   } catch (err) {
@@ -41,10 +50,14 @@ exports.getById = async (req, res) => {
 // Calls the create_account stored procedure
 exports.create = async (req, res) => {
   try {
-    const { customer_id, branch_id, account_number, account_type, balance } = req.body;
-    if (!customer_id || !branch_id || !account_number || !account_type) {
-      return res.status(400).json({ error: 'customer_id, branch_id, account_number, account_type required.' });
+    const { customer_id, branch_id, account_type, balance } = req.body;
+    if (!customer_id || !branch_id || !account_type) {
+      return res.status(400).json({ error: 'customer_id, branch_id, account_type required.' });
     }
+
+    // Generate random account number
+    const account_number = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+
     await pool.query('CALL create_account($1,$2,$3,$4,$5)',
       [customer_id, branch_id, account_number, account_type, balance || 0]);
 

@@ -47,7 +47,10 @@ export default function EmployeeDashboard() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1>Employee Dashboard</h1>
+        <div>
+          <h1>Employee Dashboard</h1>
+          {user?.employee && <p style={{ color: 'var(--text-muted)' }}>Branch: {user.employee.branch_name} ({user.employee.location})</p>}
+        </div>
         <div className="header-actions">
           <button className="btn btn-primary" onClick={() => navigate('/accounts/new')}>
             <PlusCircle size={16} /> Open Account

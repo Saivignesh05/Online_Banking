@@ -45,7 +45,9 @@ export default function CustomerDashboard() {
   const recentTx = transactions.slice(0, 6);
 
   const accountCols = [
+    { key: 'account_id', label: 'ID', width: '60px' },
     { key: 'account_number', label: 'Account No' },
+    { key: 'branch_name', label: 'Branch', render: (r) => r.branch_name ? `${r.branch_name}` : '—' },
     { key: 'account_type', label: 'Type', render: (r) => <span style={{ textTransform: 'capitalize' }}>{r.account_type}</span> },
     { key: 'balance', label: 'Balance', render: (r) => <strong style={{ color: 'var(--success)' }}>{formatCurrency(r.balance)}</strong> },
     { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
