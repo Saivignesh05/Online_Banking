@@ -170,9 +170,18 @@ loan_amount numeric(15,2),
 interest_rate numeric(5,2),
 tenure_months int,
 start_date date,
-status varchar(10),
+status varchar(20),
 approved_by int
 references employee(employee_id)
+);
+
+create table loan_option (
+option_id serial primary key,
+loan_id int
+references loan(loan_id),
+interest_rate numeric(5,2),
+tenure_months int,
+created_at timestamp default now()
 );
 
 create table emi_payment (

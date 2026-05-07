@@ -9,6 +9,7 @@ import LoadingSpinner from './components/common/LoadingSpinner';
 // Auth
 import LoginPage from './pages/auth/LoginPage';
 import ApplyPage from './pages/auth/ApplyPage';
+import ProfilePage from './pages/auth/ProfilePage';
 
 // Dashboards
 import AdminDashboard from './pages/dashboard/AdminDashboard';
@@ -87,8 +88,9 @@ export default function App() {
       {/* ── Protected (Dashboard Layout) ─────────────────────── */}
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
 
-        {/* Dashboard */}
+        {/* Dashboard & Profile */}
         <Route path="/dashboard" element={<DashboardRedirect />} />
+        <Route path="/profile" element={<ProfilePage />} />
 
         {/* Branches — role ≤ 1 for CUD, ≤ 2 for view */}
         <Route path="/branches" element={<ProtectedRoute maxRole={1}><BranchList /></ProtectedRoute>} />

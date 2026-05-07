@@ -228,3 +228,37 @@ exports.getMe = async (req, res) => {
     res.status(500).json({ error: 'Could not fetch profile.' });
   }
 };
+
+// ─────────────────────────────────────────────────────────────────
+// PUT /api/auth/me
+// ─────────────────────────────────────────────────────────────────
+exports.updateProfile = async (req, res) => {
+  try {
+    const { user_id, role_id } = req.user;
+    const { phone, email } = req.body;
+
+    if (Number(role_id) === 4) {
+      const result = await pool.query(
+        'UPDATE customer SET phone = $1, email = $2 WHERE user_id = $3 RETURNING *',
+        [phone, email, user_id]
+      );
+      if (result.rows.length === 0) return res.status(404).json({ error: 'Customer profile not found.' });
+      return res.json({ message: 'Profile updated successfully.', profile: result.rows[0] });
+    } else if (Number(role_id) === 3) {
+      const result = await pool.query(
+        'UPDATE employee SET phone = $1, email = $2 WHERE user_id = $3 RETURNING *',
+        [phone, email, user_id]
+      );
+      if (result.rows.length === 0) return res.status(404).json({ error: 'Employee profile not found.' });
+      return res.json({ message: 'Profile updated successfully.', profile: result.rows[0] });
+    } else {
+      return res.status(400).json({ error: 'Profile update not supported for this role.' });
+    }
+  } catch (err) {
+    console.error('UpdateProfile error:', err.message);
+    if (err.code === '23505') {
+      return res.status(400).json({ error: 'Phone or email already in use.' });
+    }
+    res.status(500).json({ error: 'Failed to update profile.' });
+  }
+};

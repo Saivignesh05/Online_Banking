@@ -31,9 +31,9 @@ exports.getById = async (req, res) => {
 
 exports.apply = async (req, res) => {
   try {
-    const { account_id, loan_type, loan_amount, interest_rate, tenure_months } = req.body;
-    if (!account_id || !loan_type || !loan_amount || !interest_rate || !tenure_months)
-      return res.status(400).json({ error: 'All loan fields are required.' });
+    const { account_id, loan_type, loan_amount } = req.body;
+    if (!account_id || !loan_type || !loan_amount)
+      return res.status(400).json({ error: 'Account ID, Loan Type, and Loan Amount are required.' });
 
     // Get customer_id from logged-in user
     const cust = await pool.query('SELECT customer_id FROM customer WHERE user_id = $1', [req.user.user_id]);
@@ -41,8 +41,8 @@ exports.apply = async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO loan (customer_id, account_id, loan_type, loan_amount, interest_rate, tenure_months, start_date, status)
-       VALUES ($1,$2,$3,$4,$5,$6, CURRENT_DATE, 'pending') RETURNING *`,
-      [cust.rows[0].customer_id, account_id, loan_type, loan_amount, interest_rate, tenure_months]
+       VALUES ($1,$2,$3,$4,NULL,NULL, CURRENT_DATE, 'pending') RETURNING *`,
+      [cust.rows[0].customer_id, account_id, loan_type, loan_amount]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -50,10 +50,15 @@ exports.apply = async (req, res) => {
   }
 };
 
-exports.approve = async (req, res) => {
+exports.provideOptions = async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
+    const { options } = req.body; // Array of { interestRate, tenureMonths }
+    
+    if (!options || !Array.isArray(options) || options.length === 0) {
+      return res.status(400).json({ error: 'Options are required.' });
+    }
     
     // Get employee_id of the approver
     const emp = await client.query('SELECT employee_id FROM employee WHERE user_id = $1', [req.user.user_id]);
@@ -61,9 +66,9 @@ exports.approve = async (req, res) => {
 
     await client.query('BEGIN');
 
-    // 1. Update loan status to active
+    // 1. Update loan status to awaiting
     const loanRes = await client.query(
-      `UPDATE loan SET status = 'active', approved_by = $1 WHERE loan_id = $2 RETURNING *`,
+      `UPDATE loan SET status = 'awaiting', approved_by = $1 WHERE loan_id = $2 RETURNING *`,
       [approvedBy, id]
     );
 
@@ -71,13 +76,66 @@ exports.approve = async (req, res) => {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Loan not found.' });
     }
+
+    // 2. Insert options
+    for (const opt of options) {
+      await client.query(
+        `INSERT INTO loan_option (loan_id, interest_rate, tenure_months) VALUES ($1, $2, $3)`,
+        [id, opt.interestRate, opt.tenureMonths]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ message: 'Loan options provided to customer successfully.' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('provideOptions error:', err.message);
+    res.status(500).json({ error: 'Failed to provide loan options.' });
+  } finally {
+    client.release();
+  }
+};
+
+exports.getOptions = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT * FROM loan_option WHERE loan_id = $1 ORDER BY option_id', [id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch loan options.' });
+  }
+};
+
+exports.confirmOption = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const { option_id } = req.body;
+
+    if (!option_id) return res.status(400).json({ error: 'Option ID is required.' });
+
+    await client.query('BEGIN');
+
+    // Verify option exists and get details
+    const optRes = await client.query('SELECT * FROM loan_option WHERE option_id = $1 AND loan_id = $2', [option_id, id]);
+    if (optRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Loan option not found.' });
+    }
+    const option = optRes.rows[0];
+
+    // 1. Update loan status to active
+    const loanRes = await client.query(
+      `UPDATE loan SET status = 'active', interest_rate = $1, tenure_months = $2 WHERE loan_id = $3 RETURNING *`,
+      [option.interest_rate, option.tenure_months, id]
+    );
     const loan = loanRes.rows[0];
 
     // 2. Calculate EMI
     const emiRes = await client.query('SELECT calculate_emi($1) AS emi', [id]);
     const emiAmount = Number(emiRes.rows[0].emi);
 
-    // 3. Generate EMI Schedule (Pending payments)
+    // 3. Generate EMI Schedule
     for (let i = 1; i <= loan.tenure_months; i++) {
       await client.query(
         `INSERT INTO emi_payment (loan_id, emi_amount, due_date, payment_status, penalty_amount)
@@ -90,10 +148,24 @@ exports.approve = async (req, res) => {
     res.json({ message: 'Loan approved and EMI schedule generated.', loan });
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error('approve error:', err.message);
-    res.status(500).json({ error: 'Failed to approve loan.' });
+    console.error('confirmOption error:', err.message);
+    res.status(500).json({ error: 'Failed to confirm loan option.' });
   } finally {
     client.release();
+  }
+};
+
+exports.reject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `UPDATE loan SET status = 'rejected' WHERE loan_id = $1 RETURNING *`,
+      [id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Loan not found.' });
+    res.json({ message: 'Loan application rejected.', loan: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to reject loan.' });
   }
 };
 
