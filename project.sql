@@ -735,3 +735,50 @@ $$;
 CREATE TRIGGER trg_audit_account_changes
 AFTER UPDATE ON account
 FOR EACH ROW EXECUTE FUNCTION log_account_changes();
+
+
+-- ─── 4. Auto-Lock Account on Too Many Failed Attempts ──────
+
+CREATE OR REPLACE FUNCTION auto_lock_user_account()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- If failed attempts reach 5, automatically lock the account
+    IF NEW.failed_attempts >= 5 THEN
+        NEW.account_locked := true;
+    END IF;
+    
+    -- If an admin or successful login resets attempts to 0, automatically unlock
+    IF NEW.failed_attempts = 0 AND OLD.failed_attempts > 0 THEN
+        NEW.account_locked := false;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_auto_lock_account
+BEFORE UPDATE ON user_login
+FOR EACH ROW EXECUTE FUNCTION auto_lock_user_account();
+
+
+-- ─── 5. Enforce Minimum Balance Constraint ─────────────────
+
+CREATE OR REPLACE FUNCTION enforce_minimum_balance()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Reject any balance update that drops below the required minimum
+    IF NEW.balance < NEW.min_balance THEN
+        RAISE EXCEPTION 'Transaction declined. Account balance (%) cannot drop below the minimum required balance (%).', NEW.balance, NEW.min_balance;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_enforce_min_balance
+BEFORE UPDATE ON account
+FOR EACH ROW EXECUTE FUNCTION enforce_minimum_balance();
