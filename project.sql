@@ -398,44 +398,119 @@ values
 (5,'employee','insert','transaction',2),
 (6,'employee','update','account',3);
 
-create or replace procedure transfer_money(
-    in from_acc int,
-    in to_acc int,
-    in amt numeric
+create or replace procedure create_account(
+    in cust_id int,
+    in br_id int,
+    in acc_no varchar,
+    in acc_type varchar,
+    in init_balance numeric
 )
 language plpgsql
 as $$
-declare
-    bal numeric;
 begin
 
-    select balance into bal
-    from account
-    where account_id = from_acc;
-
-    if bal < amt then
-        raise notice 'insufficient balance';
-        return;
-    end if;
-
-    update account
-    set balance = balance - amt
-    where account_id = from_acc;
-
-    update account
-    set balance = balance + amt
-    where account_id = to_acc;
-
-    insert into transaction
-    (from_account,to_account,amount,tx_type,status)
+    insert into account
+    (customer_id, branch_id, account_number, account_type, balance)
     values
-    (from_acc,to_acc,amt,'transfer','success');
+    (cust_id, br_id, acc_no, acc_type, init_balance);
 
-    raise notice 'transfer successful';
+    raise notice 'account created successfully';
 
 end;
 $$;
 
+-- 1. Secure Transfer Procedure with Full Atomicity
+CREATE OR REPLACE PROCEDURE transfer_money(
+    IN p_from_account INT,
+    IN p_to_account INT,
+    IN p_amount NUMERIC,
+    IN p_reference_no VARCHAR,
+    IN p_remarks VARCHAR
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_balance NUMERIC;
+BEGIN
+    -- Lock the row for update to prevent concurrent race conditions
+    SELECT balance INTO v_balance FROM account WHERE account_id = p_from_account FOR UPDATE;
+    
+    IF v_balance < p_amount THEN
+        RAISE EXCEPTION 'Insufficient balance for transfer (Account ID: %)', p_from_account;
+    END IF;
+
+    -- Deduct from sender
+    UPDATE account SET balance = balance - p_amount WHERE account_id = p_from_account;
+    
+    -- Add to receiver
+    UPDATE account SET balance = balance + p_amount WHERE account_id = p_to_account;
+
+    -- Log transaction
+    INSERT INTO transaction (from_account, to_account, amount, tx_type, status, reference_no, remarks)
+    VALUES (p_from_account, p_to_account, p_amount, 'transfer', 'success', p_reference_no, p_remarks);
+
+    COMMIT;
+END;
+$$;
+
+
+-- 2. Secure Credit Procedure
+CREATE OR REPLACE PROCEDURE credit_account(
+    IN p_to_account INT,
+    IN p_amount NUMERIC,
+    IN p_reference_no VARCHAR,
+    IN p_remarks VARCHAR
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Lock the account row
+    PERFORM balance FROM account WHERE account_id = p_to_account FOR UPDATE;
+
+    -- Add funds
+    UPDATE account SET balance = balance + p_amount WHERE account_id = p_to_account;
+
+    -- Log transaction
+    INSERT INTO transaction (from_account, to_account, amount, tx_type, status, reference_no, remarks)
+    VALUES (NULL, p_to_account, p_amount, 'credit', 'success', p_reference_no, p_remarks);
+
+    COMMIT;
+END;
+$$;
+
+
+-- 3. Secure Debit Procedure
+CREATE OR REPLACE PROCEDURE debit_account(
+    IN p_from_account INT,
+    IN p_amount NUMERIC,
+    IN p_reference_no VARCHAR,
+    IN p_remarks VARCHAR
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_balance NUMERIC;
+BEGIN
+    -- Lock the row to prevent concurrent debits from bypassing the limit
+    SELECT balance INTO v_balance FROM account WHERE account_id = p_from_account FOR UPDATE;
+    
+    IF v_balance < p_amount THEN
+        RAISE EXCEPTION 'Insufficient balance for debit (Account ID: %)', p_from_account;
+    END IF;
+
+    -- Deduct funds
+    UPDATE account SET balance = balance - p_amount WHERE account_id = p_from_account;
+
+    -- Log transaction
+    INSERT INTO transaction (from_account, to_account, amount, tx_type, status, reference_no, remarks)
+    VALUES (p_from_account, NULL, p_amount, 'debit', 'success', p_reference_no, p_remarks);
+
+    COMMIT;
+END;
+$$;
+
+
+-- 4. Calculate EMI Function
 create or replace function calculate_emi(
     loanid int
 )
@@ -463,6 +538,8 @@ begin
 
 end;
 $$;
+
+-- 5. Get Balance Function
 create or replace function get_balance(
     accid int
 )
@@ -481,27 +558,6 @@ begin
 
 end;
 $$;
-create or replace procedure create_account(
-    in cust_id int,
-    in br_id int,
-    in acc_no varchar,
-    in acc_type varchar,
-    in init_balance numeric
-)
-language plpgsql
-as $$
-begin
-
-    insert into account
-    (customer_id, branch_id, account_number, account_type, balance)
-    values
-    (cust_id, br_id, acc_no, acc_type, init_balance);
-
-    raise notice 'account created successfully';
-
-end;
-$$;
-
 
 
 -- ============================================================
@@ -608,3 +664,74 @@ CREATE INDEX IF NOT EXISTS idx_audit_record ON audit_log(table_name, record_id);
 -- Optimized tracking for overdue EMIs (Partial Index)
 CREATE INDEX IF NOT EXISTS idx_emi_due_pending ON emi_payment(due_date) 
 WHERE payment_status = 'pending';
+
+
+-- ============================================================
+-- ONLINE BANKING SYSTEM — Database Security Triggers
+-- ============================================================
+
+-- ─── 1. Prevent Transaction Tampering (Immutability) ────────
+
+CREATE OR REPLACE FUNCTION prevent_tx_tampering() 
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RAISE EXCEPTION 'CRITICAL SECURITY ALERT: Transactions cannot be modified or deleted once created. This constitutes financial tampering.';
+    RETURN NULL;
+END;
+$$;
+
+CREATE TRIGGER trg_no_tx_tampering
+BEFORE UPDATE OR DELETE ON transaction
+FOR EACH ROW EXECUTE FUNCTION prevent_tx_tampering();
+
+
+-- ─── 2. Prevent Deletion of Active / Non-Zero Accounts ──────
+
+CREATE OR REPLACE FUNCTION prevent_active_acc_deletion() 
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF OLD.balance > 0 THEN
+        RAISE EXCEPTION 'Cannot delete an account with a positive balance (Account ID: %). Transfer funds to 0 first.', OLD.account_id;
+    END IF;
+    IF OLD.status = 'active' THEN
+        RAISE EXCEPTION 'Cannot delete an active account (Account ID: %). Change status to closed first.', OLD.account_id;
+    END IF;
+    RETURN OLD;
+END;
+$$;
+
+CREATE TRIGGER trg_safe_acc_delete
+BEFORE DELETE ON account
+FOR EACH ROW EXECUTE FUNCTION prevent_active_acc_deletion();
+
+
+-- ─── 3. Automatic Account Audit Logging ─────────────────────
+
+CREATE OR REPLACE FUNCTION log_account_changes() 
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- If balance manually changes (bypassing normal procedures) or status changes
+    IF OLD.balance IS DISTINCT FROM NEW.balance OR OLD.status IS DISTINCT FROM NEW.status THEN
+        INSERT INTO audit_log (user_role, action, table_name, record_id, old_value, new_value)
+        VALUES (
+            'SYSTEM', 
+            'UPDATE', 
+            'account', 
+            NEW.account_id, 
+            CONCAT('Balance: ', OLD.balance, ', Status: ', OLD.status),
+            CONCAT('Balance: ', NEW.balance, ', Status: ', NEW.status)
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_audit_account_changes
+AFTER UPDATE ON account
+FOR EACH ROW EXECUTE FUNCTION log_account_changes();
