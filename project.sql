@@ -172,7 +172,8 @@ tenure_months int,
 start_date date,
 status varchar(20),
 approved_by int
-references employee(employee_id)
+references employee(employee_id),
+repayment_type varchar(20) default 'emi'
 );
 
 create table loan_option (
@@ -189,6 +190,19 @@ emi_id serial primary key,
 loan_id int
 references loan(loan_id),
 emi_amount numeric(12,2),
+due_date date,
+paid_date date,
+payment_status varchar(50),
+penalty_amount numeric(10,2),
+tx_id int
+references transaction(tx_id)
+);
+
+create table direct_payment (
+payment_id serial primary key,
+loan_id int
+references loan(loan_id),
+amount numeric(15,2),
 due_date date,
 paid_date date,
 payment_status varchar(50),
@@ -538,6 +552,19 @@ begin
 
 end;
 $$;
+
+create or replace function calculate_direct_loan_amount(loanid int) returns numeric as $$
+declare
+    p numeric;
+    r numeric;
+    n int;
+    total numeric;
+begin
+    select loan_amount, interest_rate, tenure_months into p, r, n from loan where loan_id = loanid;
+    total := p * power(1 + (r / 1200), n);
+    return total;
+end;
+$$ language plpgsql;
 
 -- 5. Get Balance Function
 create or replace function get_balance(

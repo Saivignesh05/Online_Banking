@@ -105,10 +105,22 @@ export default function LoanList() {
   const columns = [
     { key: 'loan_id', label: 'ID', width: '60px' },
     { key: 'loan_type', label: 'Type', render: (r) => <span style={{textTransform:'capitalize'}}>{r.loan_type}</span> },
+    { key: 'repayment_type', label: 'Repayment', render: (r) => <span style={{textTransform:'capitalize'}}>{r.repayment_type || 'EMI'}</span> },
     { key: 'loan_amount', label: 'Amount', render: (r) => formatCurrency(r.loan_amount) },
     { key: 'interest_rate', label: 'Rate', render: (r) => r.interest_rate ? `${r.interest_rate}%` : '-' },
     { key: 'tenure_months', label: 'Tenure', render: (r) => r.tenure_months ? `${r.tenure_months} months` : '-' },
-    { key: 'start_date', label: 'Start', render: (r) => formatDate(r.start_date) },
+    { key: 'start_date', label: 'Start', render: (r) => r.start_date ? formatDate(r.start_date) : '-' },
+    { key: 'end_date', label: 'End', render: (r) => {
+        if (!r.start_date || !r.tenure_months) return '-';
+        const date = new Date(r.start_date);
+        if (r.repayment_type === 'direct') {
+          date.setMonth(date.getMonth() + r.tenure_months);
+        } else {
+          date.setMonth(date.getMonth() + 1);
+        }
+        return formatDate(date.toISOString());
+      }
+    },
     { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
     { key: 'actions', label: '', width: '150px', render: (r) => (
       <div style={{ display: 'flex', gap: '8px' }}>
@@ -125,7 +137,9 @@ export default function LoanList() {
           </>
         )}
         {user?.role_id === 4 && r.status === 'active' && (
-          <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/loans/${r.loan_id}`); }}>Pay EMI</button>
+          <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/loans/${r.loan_id}`); }}>
+            {r.repayment_type === 'direct' ? 'Pay Loan' : 'Pay EMI'}
+          </button>
         )}
       </div>
     )},

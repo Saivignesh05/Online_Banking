@@ -31,7 +31,7 @@ exports.getById = async (req, res) => {
 
 exports.apply = async (req, res) => {
   try {
-    const { account_id, loan_type, loan_amount } = req.body;
+    const { account_id, loan_type, loan_amount, repayment_type } = req.body;
     if (!account_id || !loan_type || !loan_amount)
       return res.status(400).json({ error: 'Account ID, Loan Type, and Loan Amount are required.' });
 
@@ -40,9 +40,9 @@ exports.apply = async (req, res) => {
     if (!cust.rows.length) return res.status(404).json({ error: 'Customer not found.' });
 
     const result = await pool.query(
-      `INSERT INTO loan (customer_id, account_id, loan_type, loan_amount, interest_rate, tenure_months, start_date, status)
-       VALUES ($1,$2,$3,$4,NULL,NULL, CURRENT_DATE, 'pending') RETURNING *`,
-      [cust.rows[0].customer_id, account_id, loan_type, loan_amount]
+      `INSERT INTO loan (customer_id, account_id, loan_type, loan_amount, interest_rate, tenure_months, start_date, status, repayment_type)
+       VALUES ($1,$2,$3,$4,NULL,NULL, CURRENT_DATE, 'pending', $5) RETURNING *`,
+      [cust.rows[0].customer_id, account_id, loan_type, loan_amount, repayment_type || 'emi']
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -131,17 +131,30 @@ exports.confirmOption = async (req, res) => {
     );
     const loan = loanRes.rows[0];
 
-    // 2. Calculate EMI
-    const emiRes = await client.query('SELECT calculate_emi($1) AS emi', [id]);
-    const emiAmount = Number(emiRes.rows[0].emi);
-
-    // 3. Generate EMI Schedule
-    for (let i = 1; i <= loan.tenure_months; i++) {
+    if (loan.repayment_type === 'direct') {
+      // Calculate total lump sum
+      const amountRes = await client.query('SELECT calculate_direct_loan_amount($1) AS total', [id]);
+      const totalAmount = Number(amountRes.rows[0].total);
+      
+      // Generate single payment schedule at the end of the tenure
       await client.query(
-        `INSERT INTO emi_payment (loan_id, emi_amount, due_date, payment_status, penalty_amount)
+        `INSERT INTO direct_payment (loan_id, amount, due_date, payment_status, penalty_amount)
          VALUES ($1, $2, ($3::date + (interval '1 month' * $4))::date, 'pending', 0)`,
-        [loan.loan_id, emiAmount, loan.start_date, i]
+        [loan.loan_id, totalAmount, loan.start_date, loan.tenure_months]
       );
+    } else {
+      // 2. Calculate EMI
+      const emiRes = await client.query('SELECT calculate_emi($1) AS emi', [id]);
+      const emiAmount = Number(emiRes.rows[0].emi);
+
+      // 3. Generate EMI Schedule
+      for (let i = 1; i <= loan.tenure_months; i++) {
+        await client.query(
+          `INSERT INTO emi_payment (loan_id, emi_amount, due_date, payment_status, penalty_amount)
+           VALUES ($1, $2, ($3::date + (interval '1 month' * $4))::date, 'pending', 0)`,
+          [loan.loan_id, emiAmount, loan.start_date, i]
+        );
+      }
     }
 
     await client.query('COMMIT');
@@ -181,13 +194,24 @@ exports.calculateEmi = async (req, res) => {
 
 exports.getPayments = async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT * FROM emi_payment 
-       WHERE loan_id = $1 
-       AND (due_date <= CURRENT_DATE OR payment_status = 'paid')
-       ORDER BY due_date`, [req.params.id]
-    );
-    res.json(result.rows);
+    const loanRes = await pool.query('SELECT repayment_type FROM loan WHERE loan_id = $1', [req.params.id]);
+    if (loanRes.rows.length === 0) return res.status(404).json({ error: 'Loan not found.' });
+
+    if (loanRes.rows[0].repayment_type === 'direct') {
+      const result = await pool.query(
+        `SELECT payment_id as emi_id, loan_id, amount as emi_amount, due_date, paid_date, payment_status, penalty_amount, tx_id 
+         FROM direct_payment WHERE loan_id = $1 ORDER BY due_date`, [req.params.id]
+      );
+      res.json(result.rows);
+    } else {
+      const result = await pool.query(
+        `SELECT * FROM emi_payment 
+         WHERE loan_id = $1 
+         AND (due_date <= CURRENT_DATE OR payment_status = 'paid')
+         ORDER BY due_date`, [req.params.id]
+      );
+      res.json(result.rows);
+    }
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch EMI payments.' });
   }
@@ -218,16 +242,22 @@ exports.recordPayment = async (req, res) => {
       return res.status(400).json({ error: 'Loan is not active.' });
     }
 
-    // 3. Calculate EMI amount using the DB function
-    const emiRes = await client.query('SELECT calculate_emi($1) AS emi', [loan_id]);
-    const emi_amount = Number(emiRes.rows[0].emi);
+    // 3. Calculate payment amount using the DB function
+    let payment_amount = 0;
+    if (loan.repayment_type === 'direct') {
+      const amountRes = await client.query('SELECT calculate_direct_loan_amount($1) AS total', [loan_id]);
+      payment_amount = Number(amountRes.rows[0].total);
+    } else {
+      const emiRes = await client.query('SELECT calculate_emi($1) AS emi', [loan_id]);
+      payment_amount = Number(emiRes.rows[0].emi);
+    }
 
     // 4. Check account balance
     const accRes = await client.query('SELECT balance FROM account WHERE account_id = $1', [loan.account_id]);
     if (accRes.rows.length === 0) return res.status(404).json({ error: 'Linked account not found.' });
     const balance = Number(accRes.rows[0].balance);
 
-    if (balance < emi_amount) {
+    if (balance < payment_amount) {
       return res.status(400).json({ error: 'Insufficient balance in linked account.' });
     }
 
@@ -235,44 +265,53 @@ exports.recordPayment = async (req, res) => {
     await client.query('BEGIN');
 
     // 6. Deduct balance and create bank transaction
-    await client.query('UPDATE account SET balance = balance - $1 WHERE account_id = $2', [emi_amount, loan.account_id]);
+    await client.query('UPDATE account SET balance = balance - $1 WHERE account_id = $2', [payment_amount, loan.account_id]);
     
-    const ref = 'EMI' + Date.now();
+    const ref = (loan.repayment_type === 'direct' ? 'DIR' : 'EMI') + Date.now();
     const txRes = await client.query(
       `INSERT INTO transaction (from_account, to_account, amount, tx_type, status, reference_no, remarks)
        VALUES ($1, NULL, $2, 'debit', 'success', $3, $4) RETURNING tx_id`,
-      [loan.account_id, emi_amount, ref, `EMI Payment for Loan #${loan_id}`]
+      [loan.account_id, payment_amount, ref, `Payment for Loan #${loan_id}`]
     );
     const tx_id = txRes.rows[0].tx_id;
 
     // 7. Find the next pending installment
-    let pendingRes = await client.query(
-      `SELECT emi_id, due_date FROM emi_payment 
-       WHERE loan_id = $1 AND payment_status = 'pending' 
-       ORDER BY due_date ASC LIMIT 1`, [loan_id]
-    );
+    let pendingRes;
+    if (loan.repayment_type === 'direct') {
+      pendingRes = await client.query(
+        `SELECT payment_id as emi_id, due_date FROM direct_payment 
+         WHERE loan_id = $1 AND payment_status = 'pending' 
+         ORDER BY due_date ASC LIMIT 1`, [loan_id]
+      );
+    } else {
+      pendingRes = await client.query(
+        `SELECT emi_id, due_date FROM emi_payment 
+         WHERE loan_id = $1 AND payment_status = 'pending' 
+         ORDER BY due_date ASC LIMIT 1`, [loan_id]
+      );
 
-    // SELF-HEALING: If no pending installments exist, generate the missing schedule
-    if (pendingRes.rows.length === 0) {
-      const paidCountRes = await client.query('SELECT COUNT(*) FROM emi_payment WHERE loan_id = $1', [loan_id]);
-      const paidCount = parseInt(paidCountRes.rows[0].count);
-      
-      if (paidCount < loan.tenure_months) {
-        // Generate the rest of the schedule
-        for (let i = paidCount + 1; i <= loan.tenure_months; i++) {
-          await client.query(
-            `INSERT INTO emi_payment (loan_id, emi_amount, due_date, payment_status, penalty_amount)
-             VALUES ($1, $2, ($3::date + (interval '1 month' * $4))::date, 'pending', 0)`,
-            [loan.loan_id, emi_amount, loan.start_date, i]
+      // SELF-HEALING: If no pending installments exist, generate the missing schedule
+      if (pendingRes.rows.length === 0) {
+        const paidCountRes = await client.query('SELECT COUNT(*) FROM emi_payment WHERE loan_id = $1', [loan_id]);
+        const paidCount = parseInt(paidCountRes.rows[0].count);
+        
+        if (paidCount < loan.tenure_months) {
+          // Generate the rest of the schedule
+          for (let i = paidCount + 1; i <= loan.tenure_months; i++) {
+            await client.query(
+              `INSERT INTO emi_payment (loan_id, emi_amount, due_date, payment_status, penalty_amount)
+               VALUES ($1, $2, ($3::date + (interval '1 month' * $4))::date, 'pending', 0)`,
+              [loan.loan_id, payment_amount, loan.start_date, i]
+            );
+          }
+          
+          // Re-fetch the first newly created pending installment
+          pendingRes = await client.query(
+            `SELECT emi_id, due_date FROM emi_payment 
+             WHERE loan_id = $1 AND payment_status = 'pending' 
+             ORDER BY due_date ASC LIMIT 1`, [loan_id]
           );
         }
-        
-        // Re-fetch the first newly created pending installment
-        pendingRes = await client.query(
-          `SELECT emi_id, due_date FROM emi_payment 
-           WHERE loan_id = $1 AND payment_status = 'pending' 
-           ORDER BY due_date ASC LIMIT 1`, [loan_id]
-        );
       }
     }
 
@@ -297,13 +336,23 @@ exports.recordPayment = async (req, res) => {
       [cibilDelta, loan.customer_id]
     );
 
-    // 8. Update the EMI installment record
-    const result = await client.query(
-      `UPDATE emi_payment 
-       SET paid_date = CURRENT_DATE, payment_status = 'paid', tx_id = $1 
-       WHERE emi_id = $2 RETURNING *`,
-      [tx_id, emi_id]
-    );
+    // 8. Update the installment record
+    let result;
+    if (loan.repayment_type === 'direct') {
+      result = await client.query(
+        `UPDATE direct_payment 
+         SET paid_date = CURRENT_DATE, payment_status = 'paid', tx_id = $1 
+         WHERE payment_id = $2 RETURNING *`,
+        [tx_id, emi_id]
+      );
+    } else {
+      result = await client.query(
+        `UPDATE emi_payment 
+         SET paid_date = CURRENT_DATE, payment_status = 'paid', tx_id = $1 
+         WHERE emi_id = $2 RETURNING *`,
+        [tx_id, emi_id]
+      );
+    }
 
     await client.query('COMMIT');
     res.status(200).json({

@@ -11,6 +11,7 @@ import './Transactions.css';
 export default function TransactionList() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -48,7 +49,25 @@ export default function TransactionList() {
           )}
         </div>
       </div>
-      <DataTable columns={columns} data={transactions} emptyMessage="No transactions found." />
+      
+      <div className="filters-container" style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
+        <input 
+          type="text" 
+          placeholder="Search by Account ID..." 
+          className="form-input" 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ maxWidth: '300px' }}
+        />
+      </div>
+
+      <DataTable columns={columns} data={transactions.filter(t => {
+        if (!searchTerm) return true;
+        const lowerTerm = searchTerm.toLowerCase();
+        return (t.from_account && String(t.from_account).toLowerCase().includes(lowerTerm)) ||
+               (t.to_account && String(t.to_account).toLowerCase().includes(lowerTerm)) ||
+               (t.reference_no && String(t.reference_no).toLowerCase().includes(lowerTerm));
+      })} emptyMessage="No transactions found." />
     </div>
   );
 }

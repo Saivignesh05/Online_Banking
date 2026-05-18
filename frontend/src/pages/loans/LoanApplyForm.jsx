@@ -9,7 +9,7 @@ import './Loans.css';
 export default function LoanApplyForm() {
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState([]);
-  const [form, setForm] = useState({ account_id: '', loan_type: 'home', loan_amount: '' });
+  const [form, setForm] = useState({ account_id: '', loan_type: 'home', loan_amount: '', repayment_type: 'emi' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -30,7 +30,8 @@ export default function LoanApplyForm() {
       await api.post('/loans', {
         account_id: Number(form.account_id),
         loan_type: form.loan_type,
-        loan_amount: Number(form.loan_amount)
+        loan_amount: Number(form.loan_amount),
+        repayment_type: form.repayment_type
       });
       navigate('/loans');
     } catch (err) {
@@ -55,6 +56,8 @@ export default function LoanApplyForm() {
           </div>
           <div className="form-row">
             <FormInput label="Loan Amount (₹)" name="loan_amount" type="number" value={form.loan_amount} onChange={handleChange} required />
+            <FormSelect label="Repayment Type" name="repayment_type" value={form.repayment_type} onChange={handleChange}
+              options={[{ value: 'emi', label: 'EMI (Monthly Installments)' }, { value: 'direct', label: 'Direct (Lump Sum at End)' }]} />
           </div>
 
           <div className="form-actions">
