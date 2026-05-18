@@ -6,14 +6,27 @@ exports.getAll = async (req, res) => {
     let result;
     if (req.user.role_id === 4) {
       result = await pool.query(
-        `SELECT t.* FROM transaction t
+        `SELECT t.*, 
+                af.account_number AS from_account_number,
+                at.account_number AS to_account_number
+         FROM transaction t
+         LEFT JOIN account af ON t.from_account = af.account_id
+         LEFT JOIN account at ON t.to_account = at.account_id
          JOIN account a ON t.from_account = a.account_id OR t.to_account = a.account_id
          JOIN customer c ON a.customer_id = c.customer_id
          WHERE c.user_id = $1
-         GROUP BY t.tx_id ORDER BY t.tx_time DESC`, [req.user.user_id]
+         GROUP BY t.tx_id, af.account_number, at.account_number ORDER BY t.tx_time DESC`, [req.user.user_id]
       );
     } else {
-      result = await pool.query('SELECT * FROM transaction ORDER BY tx_time DESC');
+      result = await pool.query(
+        `SELECT t.*, 
+                af.account_number AS from_account_number,
+                at.account_number AS to_account_number
+         FROM transaction t
+         LEFT JOIN account af ON t.from_account = af.account_id
+         LEFT JOIN account at ON t.to_account = at.account_id
+         ORDER BY t.tx_time DESC`
+      );
     }
     res.json(result.rows);
   } catch (err) {

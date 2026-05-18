@@ -22,8 +22,8 @@ export default function TransactionList() {
   const columns = [
     { key: 'tx_id', label: 'ID', width: '60px' },
     { key: 'tx_type', label: 'Type', render: (r) => <span className={`tx-type ${r.tx_type}`}>{r.tx_type}</span> },
-    { key: 'from_account', label: 'From', render: (r) => r.from_account || '—' },
-    { key: 'to_account', label: 'To', render: (r) => r.to_account || '—' },
+    { key: 'from_account', label: 'From', render: (r) => r.from_account_number || 'Bank' },
+    { key: 'to_account', label: 'To', render: (r) => r.to_account_number || 'Bank' },
     { key: 'amount', label: 'Amount', render: (r) => formatCurrency(r.amount) },
     { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
     { key: 'reference_no', label: 'Reference', render: (r) => r.reference_no || '—' },
@@ -53,7 +53,7 @@ export default function TransactionList() {
       <div className="filters-container" style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
         <input 
           type="text" 
-          placeholder="Search by Account ID..." 
+          placeholder="Search by Account Number..." 
           className="form-input" 
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -64,8 +64,8 @@ export default function TransactionList() {
       <DataTable columns={columns} data={transactions.filter(t => {
         if (!searchTerm) return true;
         const lowerTerm = searchTerm.toLowerCase();
-        return (t.from_account && String(t.from_account).toLowerCase().includes(lowerTerm)) ||
-               (t.to_account && String(t.to_account).toLowerCase().includes(lowerTerm)) ||
+        return (t.from_account_number && String(t.from_account_number).toLowerCase().includes(lowerTerm)) ||
+               (t.to_account_number && String(t.to_account_number).toLowerCase().includes(lowerTerm)) ||
                (t.reference_no && String(t.reference_no).toLowerCase().includes(lowerTerm));
       })} emptyMessage="No transactions found." />
     </div>

@@ -1,5 +1,6 @@
 // ─── Account Controller ─────────────────────────────────────────
 const pool = require('../config/db');
+const { generateUniqueAccNumber } = require('../utils/accountUtils');
 
 exports.getAll = async (req, res) => {
   try {
@@ -55,8 +56,8 @@ exports.create = async (req, res) => {
       return res.status(400).json({ error: 'customer_id, branch_id, account_type required.' });
     }
 
-    // Generate random account number
-    const account_number = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+    // Generate guaranteed unique 12-digit account number
+    const account_number = await generateUniqueAccNumber(pool);
 
     await pool.query('CALL create_account($1,$2,$3,$4,$5)',
       [customer_id, branch_id, account_number, account_type, balance || 0]);
@@ -81,8 +82,8 @@ exports.requestAccount = async (req, res) => {
     if (!custRes.rows.length) return res.status(404).json({ error: 'Customer not found.' });
     const customer_id = custRes.rows[0].customer_id;
 
-    // generate random account number
-    const accNumber = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+    // generate guaranteed unique 12-digit account number
+    const accNumber = await generateUniqueAccNumber(pool);
 
     // create the account with status = 'pending'
     await pool.query(

@@ -60,7 +60,7 @@ export default function TransferForm() {
         <form onSubmit={handleSubmit}>
           <FormSelect label="From Account" name="from_account" value={form.from_account} onChange={handleChange} placeholder="Select source account" required
             options={accounts.map(a => ({ value: a.account_id, label: `${a.account_number} — ₹${Number(a.balance).toLocaleString('en-IN')}` }))} />
-          <FormInput label="To Account Number" name="to_account" type="number" value={form.to_account} onChange={handleChange} required placeholder="Enter destination 10-digit account number" />
+          <FormInput label="To Account Number" name="to_account" type="number" value={form.to_account} onChange={handleChange} required placeholder="Enter destination 12-digit account number" />
           <FormInput label="Amount (₹)" name="amount" type="number" value={form.amount} onChange={handleChange} required placeholder="0.00" />
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={loading}><Send size={16} /> {loading ? 'Transferring...' : 'Transfer'}</button>
