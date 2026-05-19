@@ -321,11 +321,11 @@ values
 insert into account
 (customer_id,branch_id,account_number,account_type,balance)
 values
-(1,1,'AC1001','savings',15000),
-(1,1,'AC1002','current',5000),
-(2,1,'AC2001','savings',12000),
-(3,2,'AC3001','savings',8000),
-(3,2,'AC3002','fixed',20000);
+(1,1,'100000000001','savings',15000),
+(1,1,'100000000002','current',5000),
+(2,1,'200000000001','savings',12000),
+(3,2,'300000000001','savings',8000),
+(3,2,'300000000002','fixed',20000);
 
 -- =========================
 -- BENEFICIARY (3)
@@ -334,9 +334,9 @@ values
 insert into beneficiary
 (customer_id,beneficiary_account,beneficiary_name)
 values
-(1,'AC2001','Customer 2'),
-(2,'AC3001','Customer 3'),
-(3,'AC1001','Customer 1');
+(1,'200000000001','Customer 2'),
+(2,'300000000001','Customer 3'),
+(3,'100000000001','Customer 1');
 
 -- =========================
 -- TRANSACTION (5)
