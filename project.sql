@@ -100,7 +100,7 @@ phone varchar(15) unique,
 email varchar(100) unique,
 address text,
 pan_card varchar(20),
-cibil_score int,
+cibil_score int default -1,
 kyc_verified boolean default false,
 created_at timestamp default now()
 );
@@ -249,22 +249,21 @@ ip_address varchar(45)
 -- ROLE already inserted in schema
 
 -- =========================
--- USER_LOGIN (12)
+-- USER_LOGIN (11)
 -- =========================
 
 insert into user_login (username,password_hash,role_id) values
-('bh1','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',1),
-('mgr1','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',2),
-('mgr2','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',2),
-('emp1','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',3),
-('emp2','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',3),
-('emp3','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',3),
-('c1','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4),
-('c2','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4),
-('c3','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4),
-('c4','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4),
-('c5','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4),
-('c6','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4);
+('branchhead1','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',1),
+('branchhead2','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',1),
+('manager1','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',2),
+('manager2','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',2),
+('manager3','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',2),
+('employee1','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',3),
+('employee2','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',3),
+('employee3','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',3),
+('customer1','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4),
+('customer2','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4),
+('customer3','$2b$10$QZNf/xY9SXcudBjcDDGGCepV1D/X4diFN9GgQgQDVvsRTCRlMLvhC',4);
 
 -- =========================
 -- BRANCH (2)
@@ -275,20 +274,23 @@ insert into branch (branch_name,location,ifsc_code) values
 ('kochi','kerala','ifsc2');
 
 -- =========================
--- BRANCH_HEAD (1)
+-- BRANCH_HEAD (2)
 -- =========================
 
 insert into branch_head (user_id,branch_id)
-values (1,1);
+values 
+(1,1), -- branchhead1
+(2,2); -- branchhead2
 
 -- =========================
--- MANAGER (2)
+-- MANAGER (3)
 -- =========================
 
 insert into manager (user_id,branch_head_id,department)
 values
-(2,1,'loans'),
-(3,1,'accounts');
+(3,1,'Loans'),      -- manager1
+(4,1,'Accounts'),   -- manager2
+(5,2,'Operations'); -- manager3
 
 -- =========================
 -- EMPLOYEE (3)
@@ -297,120 +299,103 @@ values
 insert into employee
 (user_id,name,branch_id,manager_id,hire_date,salary)
 values
-(4,'emp a',1,1,'2024-01-01',20000),
-(5,'emp b',1,1,'2024-01-01',21000),
-(6,'emp c',2,2,'2024-01-01',22000);
+(6,'Employee 1',1,1,'2024-01-01',50000),
+(7,'Employee 2',1,2,'2024-01-01',45000),
+(8,'Employee 3',2,3,'2024-01-01',60000);
 
 -- =========================
--- CUSTOMER (6)
+-- CUSTOMER (3)
 -- =========================
 
 insert into customer
-(user_id,name,dob,gender,phone,email,address,cibil_score,kyc_verified)
+(user_id,name,dob,gender,phone,email,address,kyc_verified)
 values
-(7,'a','1998-01-01','M','9001','a@mail','k',750,true),
-(8,'b','1998-01-01','M','9002','b@mail','k',720,true),
-(9,'c','1998-01-01','M','9003','c@mail','k',710,true),
-(10,'d','1998-01-01','M','9004','d@mail','k',700,true),
-(11,'e','1998-01-01','M','9005','e@mail','k',690,true),
-(12,'f','1998-01-01','M','9006','f@mail','k',680,true);
+(9,'Customer 1','1990-05-15','F','9876543210','customer1@example.com','MG Road, Bengaluru',true),
+(10,'Customer 2','1985-08-20','M','9876543211','customer2@example.com','Linking Road, Mumbai',true),
+(11,'Customer 3','1992-11-10','M','9876543212','customer3@example.com','Connaught Place, Delhi',true);
 
 -- =========================
--- ACCOUNT (8)
+-- ACCOUNT (5)
 -- =========================
 
 insert into account
 (customer_id,branch_id,account_number,account_type,balance)
 values
-(1,1,'ac1','savings',1000),
-(2,1,'ac2','savings',2000),
-(3,1,'ac3','current',3000),
-(4,2,'ac4','savings',4000),
-(5,2,'ac5','savings',5000),
-(6,2,'ac6','fixed',6000),
-(1,1,'ac7','savings',7000),
-(2,1,'ac8','current',8000);
+(1,1,'AC1001','savings',15000),
+(1,1,'AC1002','current',5000),
+(2,1,'AC2001','savings',12000),
+(3,2,'AC3001','savings',8000),
+(3,2,'AC3002','fixed',20000);
 
 -- =========================
--- BENEFICIARY (5)
+-- BENEFICIARY (3)
 -- =========================
 
 insert into beneficiary
 (customer_id,beneficiary_account,beneficiary_name)
 values
-(1,'ac2','b'),
-(2,'ac3','c'),
-(3,'ac4','d'),
-(4,'ac5','e'),
-(5,'ac6','f');
+(1,'AC2001','Customer 2'),
+(2,'AC3001','Customer 3'),
+(3,'AC1001','Customer 1');
 
 -- =========================
--- TRANSACTION (10)
+-- TRANSACTION (5)
 -- =========================
 
 insert into transaction
 (from_account,to_account,amount,tx_type,status,reference_no)
 values
-(null,1,100,'credit','success','t1'),
-(1,null,50,'debit','success','t2'),
-(1,2,200,'transfer','success','t3'),
-(null,3,300,'credit','success','t4'),
-(3,4,400,'transfer','success','t5'),
-(4,null,100,'debit','success','t6'),
-(null,5,200,'credit','success','t7'),
-(5,6,150,'transfer','success','t8'),
-(6,null,100,'debit','success','t9'),
-(null,2,500,'credit','success','t10');
+(null,1,15000,'credit','success','TX001'),
+(null,2,5000,'credit','success','TX002'),
+(1,3,1000,'transfer','success','TX003'),
+(null,4,8000,'credit','success','TX004'),
+(null,5,20000,'credit','success','TX005');
 
 -- =========================
--- LOAN (4)
+-- LOAN (3)
 -- =========================
 
 insert into loan
 (customer_id,account_id,loan_type,loan_amount,interest_rate,tenure_months,start_date,status,approved_by)
 values
-(1,1,'home',100000,8,60,'2024-01-01','active',1),
-(2,2,'car',50000,9,36,'2024-01-01','active',2),
-(3,3,'edu',30000,7,24,'2024-01-01','active',3),
-(4,4,'home',80000,8,48,'2024-01-01','active',1);
+(1,1,'Home Loan',250000,8.5,120,'2024-01-15','active',1),
+(2,3,'Car Loan',400000,9.0,48,'2024-02-10','active',2),
+(3,4,'Education',300000,7.5,36,'2024-03-05','active',3);
 
 -- =========================
--- EMI (4)
+-- EMI (3)
 -- =========================
 
 insert into emi_payment
 (loan_id,emi_amount,due_date,paid_date,payment_status)
 values
-(1,2000,'2024-02-01','2024-02-01','paid'),
-(2,1500,'2024-02-01','2024-02-01','paid'),
-(3,1000,'2024-02-01','2024-02-01','paid'),
-(4,1800,'2024-02-01','2024-02-01','paid');
+(1,3099.64,'2024-02-15','2024-02-14','paid'),
+(2,995.42,'2024-03-10','2024-03-09','paid'),
+(3,933.20,'2024-04-05',null,'pending');
 
 -- =========================
 -- LOGIN_LOG (6)
 -- =========================
 
 insert into login_log (user_id,user_type,status) values
-(7,'customer','success'),
-(8,'customer','success'),
 (9,'customer','success'),
-(4,'employee','success'),
-(5,'employee','success'),
+(10,'customer','success'),
+(11,'customer','success'),
+(6,'employee','success'),
+(3,'manager','success'),
 (1,'branch_head','success');
 
 -- =========================
--- AUDIT_LOG (6)
+-- AUDIT_LOG (4)
 -- =========================
 
 insert into audit_log
 (user_id,user_role,action,table_name,record_id)
 values
-(4,'employee','insert','account',1),
-(2,'manager','approve','loan',1),
+(6,'employee','insert','account',1),
+(3,'manager','approve','loan',1),
 (1,'branch_head','update','employee',1),
-(3,'manager','delete','beneficiary',1),
-(5,'employee','insert','transaction',2),
-(6,'employee','update','account',3);
+(4,'manager','delete','beneficiary',1);
 
 create or replace procedure create_account(
     in cust_id int,

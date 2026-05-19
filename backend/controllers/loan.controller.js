@@ -326,13 +326,13 @@ exports.recordPayment = async (req, res) => {
 
     let cibilDelta = 0;
     if (today <= dueDateObj) {
-      cibilDelta = 10; // On time
+      cibilDelta = 4; // On time
     } else {
       cibilDelta = -20; // Late
     }
 
     await client.query(
-      'UPDATE customer SET cibil_score = GREATEST(300, LEAST(900, cibil_score + $1)) WHERE customer_id = $2',
+      'UPDATE customer SET cibil_score = GREATEST(300, LEAST(900, COALESCE(NULLIF(cibil_score, -1), 700) + $1)) WHERE customer_id = $2',
       [cibilDelta, loan.customer_id]
     );
 
