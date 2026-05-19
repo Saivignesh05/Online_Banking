@@ -6,5 +6,6 @@ const controller = require('../controllers/manager.controller');
 // Only Branch Head (Role 1) can manage Managers
 router.get('/', auth, authorize(1), controller.getAll);
 router.post('/', auth, authorize(1), controller.create);
+router.delete('/:id', auth, authorize(1), controller.remove);
 
 module.exports = router;

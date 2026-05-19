@@ -91,3 +91,18 @@ exports.create = async (req, res) => {
     client.release();
   }
 };
+
+exports.remove = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `UPDATE manager SET status = 'inactive' WHERE manager_id = $1 RETURNING *`,
+      [id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Manager not found.' });
+    res.json({ message: 'Manager deactivated.', manager: result.rows[0] });
+  } catch (err) {
+    console.error('remove manager:', err.message);
+    res.status(500).json({ error: 'Failed to deactivate manager.' });
+  }
+};
