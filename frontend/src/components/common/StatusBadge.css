@@ -1,11 +1,61 @@
+/* ── StatusBadge — Professional Light Theme ─────────────────────── */
+
 .status-badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
-  font-size: 0.75rem;
+  padding: 3px 10px;
+  font-size: 0.6875rem;
   font-weight: 600;
   border-radius: 999px;
   text-transform: capitalize;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+/* Active / Success states */
+.status-badge.active,
+.status-badge.success,
+.status-badge.paid,
+.status-badge.approved,
+.status-badge.verified {
+  background: var(--success-light);
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+
+/* Pending / Warning states */
+.status-badge.pending,
+.status-badge.awaiting,
+.status-badge.processing {
+  background: var(--warning-light);
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+/* Danger / Error states */
+.status-badge.rejected,
+.status-badge.failed,
+.status-badge.inactive,
+.status-badge.closed,
+.status-badge.locked {
+  background: var(--danger-light);
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+
+/* Info / Neutral states */
+.status-badge.info,
+.status-badge.transfer,
+.status-badge.credit {
+  background: var(--info-light);
+  color: #0c4a6e;
+  border-color: #bae6fd;
+}
+
+/* Debit */
+.status-badge.debit {
+  background: #fef3c7;
+  color: #78350f;
+  border-color: #fde68a;
 }
