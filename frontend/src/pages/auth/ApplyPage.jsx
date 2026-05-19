@@ -78,7 +78,7 @@ export default function ApplyPage() {
         )}
 
         {success && (
-          <div className="form-alert" style={{ background: 'rgba(16, 185, 129, 0.12)', color: 'var(--success-light)', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
+          <div className="form-alert success">
             {success} Redirecting...
           </div>
         )}
