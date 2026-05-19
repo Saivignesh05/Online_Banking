@@ -113,11 +113,7 @@ export default function LoanList() {
     { key: 'end_date', label: 'End', render: (r) => {
         if (!r.start_date || !r.tenure_months) return '-';
         const date = new Date(r.start_date);
-        if (r.repayment_type === 'direct') {
-          date.setMonth(date.getMonth() + r.tenure_months);
-        } else {
-          date.setMonth(date.getMonth() + 1);
-        }
+        date.setMonth(date.getMonth() + r.tenure_months);
         return formatDate(date.toISOString());
       }
     },
