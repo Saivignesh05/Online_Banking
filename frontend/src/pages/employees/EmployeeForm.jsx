@@ -35,8 +35,13 @@ export default function EmployeeForm() {
     setLoading(true);
     try {
       const data = { ...form, salary: form.salary ? Number(form.salary) : null };
-      if (isEdit) { await api.put(`/employees/${id}`, data); }
-      else { await api.post('/employees', data); }
+      if (isEdit) { 
+        await api.put(`/employees/${id}`, data); 
+        alert('Employee modified successfully!');
+      } else { 
+        await api.post('/employees', data); 
+        alert('Employee created successfully!');
+      }
       navigate('/employees');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save employee.');

@@ -15,12 +15,27 @@ export default function ManagerList() {
     api.get('/managers').then(r => setManagers(r.data)).catch(console.error).finally(() => setLoading(false));
   }, []);
 
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to deactivate this manager?')) {
+      try {
+        await api.delete(`/managers/${id}`);
+        setManagers(managers.map(m => m.manager_id === id ? { ...m, status: 'inactive' } : m));
+        alert('Manager deleted successfully.');
+      } catch (err) {
+        alert(err.response?.data?.error || 'Failed to delete manager.');
+      }
+    }
+  };
+
   const columns = [
     { key: 'manager_id', label: 'ID', width: '60px' },
     { key: 'username', label: 'Username' },
     { key: 'department', label: 'Department' },
     { key: 'appointed_date', label: 'Appointed', render: (r) => formatDate(r.appointed_date) },
     { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
+    { key: 'actions', label: '', width: '80px', render: (r) => (
+      <button className="btn btn-ghost btn-sm" style={{color: 'var(--danger)'}} onClick={(e) => { e.stopPropagation(); handleDelete(r.manager_id); }}>Delete</button>
+    )},
   ];
 
   if (loading) return <div className="page-container"><p className="loading-text">Loading...</p></div>;

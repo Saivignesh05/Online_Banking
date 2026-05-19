@@ -23,15 +23,15 @@
 }
 
 .form-alert.error {
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  color: var(--danger-light);
+  background: var(--danger-light);
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
 }
 
 .form-alert.success {
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  color: var(--success-light);
+  background: var(--success-light);
+  border: 1px solid #6ee7b7;
+  color: #047857;
 }
 
 .detail-card {

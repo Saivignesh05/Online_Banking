@@ -16,6 +16,18 @@ export default function EmployeeList() {
     api.get('/employees').then(r => setEmployees(r.data)).catch(console.error).finally(() => setLoading(false));
   }, []);
 
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to deactivate this employee?')) {
+      try {
+        await api.delete(`/employees/${id}`);
+        setEmployees(employees.map(e => e.employee_id === id ? { ...e, status: 'inactive' } : e));
+        alert('Employee deleted successfully.');
+      } catch (err) {
+        alert(err.response?.data?.error || 'Failed to delete employee.');
+      }
+    }
+  };
+
   const columns = [
     { key: 'employee_id', label: 'ID', width: '60px' },
     { key: 'name', label: 'Name' },
@@ -25,8 +37,11 @@ export default function EmployeeList() {
     { key: 'salary', label: 'Salary', render: (r) => r.salary ? formatCurrency(r.salary) : '—' },
     { key: 'hire_date', label: 'Hired', render: (r) => formatDate(r.hire_date) },
     { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
-    { key: 'actions', label: '', width: '80px', render: (r) => (
-      <button className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/employees/${r.employee_id}/edit`); }}>Edit</button>
+    { key: 'actions', label: '', width: '150px', render: (r) => (
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); navigate(`/employees/${r.employee_id}/edit`); }}>Edit</button>
+        <button className="btn btn-ghost btn-sm" style={{color: 'var(--danger)'}} onClick={(e) => { e.stopPropagation(); handleDelete(r.employee_id); }}>Delete</button>
+      </div>
     )},
   ];
 

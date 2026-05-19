@@ -56,9 +56,9 @@ exports.create = async (req, res) => {
     const { username, password, name, phone, email, hire_date, salary } = req.body;
     const { user_id, role_id } = req.user;
 
-    // Only Managers (Role 2) can create Employees
-    if (role_id !== 2) {
-      return res.status(403).json({ error: 'Only Managers can create employees.' });
+    // Managers (Role 2) and Branch Heads (Role 1) can create Employees
+    if (role_id !== 1 && role_id !== 2) {
+      return res.status(403).json({ error: 'Only Managers and Branch Heads can create employees.' });
     }
 
     if (!username || !password || !name) {
@@ -67,18 +67,34 @@ exports.create = async (req, res) => {
 
     await client.query('BEGIN');
 
-    // 1. Get branch_id and manager_id from the logged-in Manager
-    const mgrRes = await client.query(
-      `SELECT m.manager_id, bh.branch_id 
-       FROM manager m
-       JOIN branch_head bh ON m.branch_head_id = bh.branch_head_id
-       WHERE m.user_id = $1`, [user_id]
-    );
-    if (mgrRes.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Manager profile not found.' });
+    // 1. Get branch_id and manager_id based on role
+    let branch_id = null;
+    let manager_id = null;
+
+    if (role_id === 2) {
+      const mgrRes = await client.query(
+        `SELECT m.manager_id, bh.branch_id 
+         FROM manager m
+         JOIN branch_head bh ON m.branch_head_id = bh.branch_head_id
+         WHERE m.user_id = $1`, [user_id]
+      );
+      if (mgrRes.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Manager profile not found.' });
+      }
+      manager_id = mgrRes.rows[0].manager_id;
+      branch_id = mgrRes.rows[0].branch_id;
+    } else if (role_id === 1) {
+      const bhRes = await client.query(
+        `SELECT branch_id FROM branch_head WHERE user_id = $1`, [user_id]
+      );
+      if (bhRes.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Branch Head profile not found.' });
+      }
+      branch_id = bhRes.rows[0].branch_id;
+      // manager_id remains null, reporting directly to branch head
     }
-    const { manager_id, branch_id } = mgrRes.rows[0];
 
     // 2. Check if username exists
     const existsUser = await client.query('SELECT 1 FROM user_login WHERE username = $1', [username]);
@@ -119,7 +135,7 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, branch_id, manager_id, phone, email, salary, status } = req.body;
+    const { name, branch_id, manager_id, phone, email, hire_date, salary, status } = req.body;
     const result = await pool.query(
       `UPDATE employee
        SET name       = COALESCE($1, name),
@@ -127,10 +143,11 @@ exports.update = async (req, res) => {
            manager_id = COALESCE($3, manager_id),
            phone      = COALESCE($4, phone),
            email      = COALESCE($5, email),
-           salary     = COALESCE($6, salary),
-           status     = COALESCE($7, status)
-       WHERE employee_id = $8 RETURNING *`,
-      [name, branch_id, manager_id, phone, email, salary, status, id]
+           hire_date  = COALESCE($6, hire_date),
+           salary     = COALESCE($7, salary),
+           status     = COALESCE($8, status)
+       WHERE employee_id = $9 RETURNING *`,
+      [name, branch_id, manager_id, phone, email, hire_date, salary, status, id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Employee not found.' });
     res.json(result.rows[0]);
