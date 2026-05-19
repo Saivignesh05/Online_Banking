@@ -1,5 +1,6 @@
 // ─── Application Controller ────────────────────────────────────────────
 const pool = require('../config/db');
+const { generateUniqueAccNumber } = require('../utils/accountUtils');
 
 exports.getApplications = async (req, res) => {
   try {
@@ -54,8 +55,8 @@ exports.approveApplication = async (req, res) => {
       return res.status(400).json({ error: 'Customer is already verified.' });
     }
 
-    // 1. Generate account number (e.g., 10 digits random)
-    const accNumber = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+    // 1. Generate guaranteed unique 12-digit account number
+    const accNumber = await generateUniqueAccNumber(client);
 
     // 2. Create account
     await client.query(
