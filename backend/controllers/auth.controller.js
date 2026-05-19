@@ -14,7 +14,7 @@ if (!JWT_SECRET) {
 }
 
 // ── Helper: build JWT ───────────────────────────────────────────
-const signToken = (user, roleName) =>
+const signToken = (user, roleName, login_id = null) =>
   jwt.sign(
     {
       user_id:   user.user_id,
@@ -22,6 +22,7 @@ const signToken = (user, roleName) =>
       role_id:   user.role_id,
       role_name: roleName,
       kyc_verified: user.kyc_verified !== undefined ? user.kyc_verified : true,
+      login_id:  login_id,
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
@@ -158,11 +159,16 @@ exports.login = async (req, res) => {
     );
 
     // Log the login
-    await pool.query(
-      `INSERT INTO login_log (user_id, user_type, status)
-       VALUES ($1, $2, 'success')`,
-      [user.user_id, user.role_name]
+    const ipAddress = req.ip || req.connection?.remoteAddress || 'Unknown';
+    const userAgentRaw = req.headers['user-agent'] || 'Unknown';
+    const device = userAgentRaw.substring(0, 100);
+
+    const logRes = await pool.query(
+      `INSERT INTO login_log (user_id, user_type, ip_address, device, status)
+       VALUES ($1, $2, $3, $4, 'success') RETURNING login_id`,
+      [user.user_id, user.role_name, ipAddress, device]
     );
+    const login_id = logRes.rows[0].login_id;
 
     let kyc_verified = true;
     if (user.role_id === 4) {
@@ -173,7 +179,7 @@ exports.login = async (req, res) => {
     }
     user.kyc_verified = kyc_verified;
 
-    const token = signToken(user, user.role_name);
+    const token = signToken(user, user.role_name, login_id);
 
     res.json({
       message: 'Login successful.',
@@ -282,5 +288,24 @@ exports.updateProfile = async (req, res) => {
       return res.status(400).json({ error: 'Phone or email already in use.' });
     }
     res.status(500).json({ error: 'Failed to update profile.' });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────
+// POST /api/auth/logout
+// ─────────────────────────────────────────────────────────────────
+exports.logout = async (req, res) => {
+  try {
+    const { login_id } = req.user;
+    if (login_id) {
+      await pool.query(
+        'UPDATE login_log SET logout_time = NOW() WHERE login_id = $1',
+        [login_id]
+      );
+    }
+    res.json({ message: 'Logged out successfully.' });
+  } catch (err) {
+    console.error('Logout error:', err.message);
+    res.status(500).json({ error: 'Logout failed.' });
   }
 };
