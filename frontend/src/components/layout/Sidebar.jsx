@@ -34,7 +34,9 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <div className="brand-icon">N</div>
+        <div className="brand-icon">
+          <Landmark size={20} color="white" />
+        </div>
         <span className="brand-name">Assk Bank</span>
       </div>
 
